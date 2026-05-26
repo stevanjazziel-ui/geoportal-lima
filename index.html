@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Geoportal térmico-urbanístico de Lima</title>
+    <meta
+      name="description"
+      content="Visor geoespacial para Lima con resultados locales de índice constructivo calculados desde imagen satelital y cruces térmicos para Lima."
+    >
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    >
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    >
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Lima · análisis urbanístico y calor</p>
+          <h1>Geoportal térmico-urbanístico con fuentes oficiales del Perú</h1>
+          <p class="hero-text">
+            Cruza puntos de calor de verano de SENAMHI con vulnerabilidad climática futura
+            y un índice constructivo calculado localmente desde imágenes satelitales.
+            Los resultados quedan marcados sobre Lima desde la apertura del archivo.
+          </p>
+        </div>
+        <div class="hero-badges">
+          <span>SENAMHI</span>
+          <span>ICL</span>
+          <span>GeoIDEP</span>
+          <span>Lima</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="panel panel-left">
+          <section class="section-block">
+            <div class="section-heading">
+              <h2>Capas activas</h2>
+              <p>Base analítica visible apenas abre el visor.</p>
+            </div>
+            <div class="toggle-list">
+              <label class="toggle-card">
+                <input type="checkbox" id="toggle-heatwave" checked>
+                <span class="toggle-main">
+                  <strong>Puntos de calor observados</strong>
+                  <small>SENAMHI · frecuencia de verano en Lima</small>
+                </span>
+              </label>
+              <label class="toggle-card">
+                <input type="checkbox" id="toggle-hazard" checked>
+                <span class="toggle-main">
+                  <strong>Índice constructivo satelital</strong>
+                  <small>Buffers calculados localmente sobre imagen World Imagery</small>
+                </span>
+              </label>
+              <label class="toggle-card">
+                <input type="checkbox" id="toggle-mountains">
+                <span class="toggle-main">
+                  <strong>Zonas de montaña</strong>
+                  <small>Polígonos y puntos ligados a lomas o clases frías en Lima</small>
+                </span>
+              </label>
+              <label class="toggle-card">
+                <input type="checkbox" id="toggle-climate">
+                <span class="toggle-main">
+                  <strong>Clasificación climática</strong>
+                  <small>SENAMHI · WMS nacional</small>
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <section class="section-block">
+            <div class="section-heading">
+              <h2>Capas urbanas ICL</h2>
+              <p>Capas opcionales de apoyo. El índice principal ya sale del satélite.</p>
+            </div>
+            <div class="toggle-list">
+              <label class="toggle-card optional">
+                <input type="checkbox" id="toggle-construction">
+                <span class="toggle-main">
+                  <strong>Construcciones registradas</strong>
+                  <small>ICL · WMS de referencia urbana</small>
+                </span>
+              </label>
+              <label class="toggle-card optional">
+                <input type="checkbox" id="toggle-blocks">
+                <span class="toggle-main">
+                  <strong>Manzanas catastrales</strong>
+                  <small>ICL · patrón de tejido urbano</small>
+                </span>
+              </label>
+              <label class="toggle-card optional">
+                <input type="checkbox" id="toggle-parks">
+                <span class="toggle-main">
+                  <strong>Áreas verdes</strong>
+                  <small>ICL · infraestructura de enfriamiento urbano</small>
+                </span>
+              </label>
+            </div>
+            <div id="icl-status" class="status-box">
+              Las capas del ICL son opcionales. El resultado principal ya está calculado localmente.
+            </div>
+          </section>
+
+          <section class="section-block compact">
+            <div class="section-heading">
+              <h2>Notas de lectura</h2>
+            </div>
+            <ul class="notes-list">
+              <li>El índice constructivo usa recortes satelitales locales alrededor de cada punto.</li>
+              <li>La prioridad combina calor observado, vulnerabilidad térmica y ocupación construida.</li>
+              <li>La capa de montaña sigue siendo contexto territorial, no reemplaza un DEM o pendiente.</li>
+            </ul>
+          </section>
+        </aside>
+
+        <section class="map-stage">
+          <div id="map"></div>
+          <div class="map-overlay top-left">
+            <div class="overlay-card">
+              <p class="overlay-label">Enfoque del visor</p>
+              <strong id="focus-title">Lima y sus contrastes térmicos</strong>
+              <p id="focus-description">
+                El panel resalta puntos de calor y el índice constructivo calculado desde satélite.
+              </p>
+            </div>
+          </div>
+          <div class="map-overlay bottom-left">
+            <div class="legend-card">
+              <h3>Leyenda rápida</h3>
+              <div class="legend-group">
+                <p>Frecuencia de olas de calor</p>
+                <span><i class="dot freq-low"></i> Baja</span>
+                <span><i class="dot freq-medium"></i> Media</span>
+                <span><i class="dot freq-high"></i> Alta</span>
+                <span><i class="dot freq-extreme"></i> Muy alta</span>
+              </div>
+              <div class="legend-group">
+                <p>Multipeligro climático</p>
+                <span><i class="swatch hazard-low"></i> Bajo</span>
+                <span><i class="swatch hazard-medium"></i> Medio</span>
+                <span><i class="swatch hazard-high"></i> Alto</span>
+                <span><i class="swatch hazard-extreme"></i> Muy alto</span>
+              </div>
+              <div class="legend-group">
+                <p>Índice constructivo satelital</p>
+                <span><i class="swatch build-low"></i> Bajo</span>
+                <span><i class="swatch build-medium"></i> Medio</span>
+                <span><i class="swatch build-high"></i> Alto</span>
+                <span><i class="swatch build-extreme"></i> Muy alto</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="panel panel-right">
+          <section class="section-block">
+            <div class="section-heading">
+              <h2>Resumen ejecutivo</h2>
+              <p>Lectura directa para priorizar territorio sobre satélite.</p>
+            </div>
+            <div class="metric-grid">
+              <article class="metric-card">
+                <span class="metric-label">Puntos analizados</span>
+                <strong id="metric-points">--</strong>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">Vulnerabilidad media+</span>
+                <strong id="metric-risk">--</strong>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">Frecuencia máxima</span>
+                <strong id="metric-peak">--</strong>
+              </article>
+              <article class="metric-card">
+                <span class="metric-label">Índice constructivo medio</span>
+                <strong id="metric-construction">--</strong>
+              </article>
+            </div>
+          </section>
+
+          <section class="section-block">
+            <div class="section-heading">
+              <h2>Puntos prioritarios</h2>
+              <p>Cruce entre calor, vulnerabilidad y ocupación construida.</p>
+            </div>
+            <div id="ranking-list" class="ranking-list"></div>
+          </section>
+
+          <section class="section-block compact">
+            <div class="section-heading">
+              <h2>Fuentes</h2>
+            </div>
+            <ul id="source-list" class="source-list"></ul>
+          </section>
+
+          <section class="section-block compact">
+            <div class="section-heading">
+              <h2>Estado</h2>
+            </div>
+            <div id="app-status" class="status-box">Preparando resultados locales de Lima…</div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="data/lima_analysis_data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
