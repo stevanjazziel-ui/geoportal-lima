@@ -1,5 +1,11 @@
 # Geoportal Lima
 
+## Publicacion web
+
+La version publicada por GitHub Pages queda en:
+
+`https://stevanjazziel-ui.github.io/geoportal-lima/`
+
 Visor geoespacial para comparar calor, vulnerabilidad climática y contexto urbanístico en Lima usando fuentes oficiales del Perú.
 
 ## Cómo abrirlo
