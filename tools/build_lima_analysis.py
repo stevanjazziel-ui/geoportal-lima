@@ -3,6 +3,7 @@ import math
 import re
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
@@ -12,18 +13,28 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
-SATELLITE_DIR = DATA_DIR / "satellite_samples"
 OUTPUT_JS = DATA_DIR / "lima_analysis_data.js"
 MOUNTAIN_JS = DATA_DIR / "lima_mountain_zones.js"
+BOUNDARY_CACHE = DATA_DIR / "ign_lima_region_boundary.geojson"
 
 WORLD_IMAGERY_EXPORT = (
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export"
+)
+LIMA_BOUNDARY_URL = (
+    "https://www.idep.gob.pe/geoportal/rest/services/"
+    "DATOS_GEOESPACIALES/L%C3%8DMITES/FeatureServer/3/query"
+    "?where=NOMBDEP%3D%27LIMA%27&outFields=*&returnGeometry=true&f=geojson"
 )
 
 HEATWAVE_FILE = DATA_DIR / "senamhi_heatwave_frequency_lima.geojson"
 HAZARD_FILE = DATA_DIR / "senamhi_climate_multi_hazard_lima.geojson"
 MOUNTAIN_FILE = DATA_DIR / "senamhi_mountain_zones_lima.geojson"
 CLIMATE_FILE = DATA_DIR / "senamhi_climate_classification_lima.geojson"
+
+GRID_SPACING_KM = 16.0
+IMAGE_SIZE = 224
+ANALYSIS_RADIUS_KM = 0.65
+WORKERS = 4
 
 HAZARD_SCORE = {
     "Bajo": 0.25,
@@ -36,27 +47,65 @@ HAZARD_SCORE = {
 def decode_text(value):
     if not isinstance(value, str):
         return value
-    try:
-        decoded = value.encode("latin1").decode("utf-8")
-    except (UnicodeEncodeError, UnicodeDecodeError):
-        decoded = value
+    decoded = value
+    for _ in range(2):
+        try:
+            candidate = decoded.encode("latin1").decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            break
+        if candidate == decoded:
+            break
+        decoded = candidate
     return (
-        decoded.replace("Ð", "Ñ")
+        decoded.replace("Ã", "Ñ")
+        .replace("Ã°", "ñ")
+        .replace("Ãƒâ€˜", "Ñ")
+        .replace("ÃƒÂ±", "ñ")
+        .replace("Ð", "Ñ")
         .replace("ð", "ñ")
-        .replace("Ã‘", "Ñ")
-        .replace("Ã±", "ñ")
     )
 
 
 def slugify(value):
     lowered = decode_text(value).lower()
     cleaned = re.sub(r"[^a-z0-9]+", "-", lowered)
-    return cleaned.strip("-") or "point"
+    return cleaned.strip("-") or "item"
 
 
 def load_geojson(path):
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def load_or_fetch_geojson(cache_path, url):
+    if cache_path.exists():
+        return load_geojson(cache_path)
+
+    request = urllib.request.Request(url, headers={"User-Agent": "GeoportalLima/2.0"})
+    with urllib.request.urlopen(request, timeout=90) as response:
+        payload = response.read()
+    cache_path.write_bytes(payload)
+    return json.loads(payload.decode("utf-8"))
+
+
+def walk_coords(coords, collector):
+    if isinstance(coords[0], (int, float)):
+        collector(coords[0], coords[1])
+        return
+    for item in coords:
+        walk_coords(item, collector)
+
+
+def geometry_bounds(geometry):
+    xs = []
+    ys = []
+
+    def collect(x, y):
+        xs.append(x)
+        ys.append(y)
+
+    walk_coords(geometry["coordinates"], collect)
+    return min(xs), min(ys), max(xs), max(ys)
 
 
 def point_in_ring(point, ring):
@@ -97,6 +146,29 @@ def point_in_feature(point, feature):
     return False
 
 
+def feature_bbox(feature):
+    min_x, min_y, max_x, max_y = geometry_bounds(feature["geometry"])
+    return {
+        "minX": min_x,
+        "minY": min_y,
+        "maxX": max_x,
+        "maxY": max_y,
+    }
+
+
+def haversine_km(lat1, lon1, lat2, lon2):
+    radius = 6371.0088
+    d_lat = math.radians(lat2 - lat1)
+    d_lon = math.radians(lon2 - lon1)
+    a = (
+        math.sin(d_lat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(d_lon / 2) ** 2
+    )
+    return 2 * radius * math.asin(math.sqrt(a))
+
+
 def find_hazard(point, features):
     for feature in features:
         if point_in_feature(point, feature):
@@ -128,13 +200,13 @@ def find_climate_context(point, features):
             props = feature.get("properties", {})
             description = decode_text(props.get("descripcion", "Sin descripcion"))
             code = decode_text(props.get("codigo", "Sin codigo"))
+            is_mountain = bool(
+                re.search(r"Frio|Frío|Semifrigido|Semifrígido|Hielo|Glaciar|Loma", description, re.IGNORECASE)
+            ) or bool(re.search(r"Glaciar|Loma", code, re.IGNORECASE))
             return {
                 "code": code,
                 "description": description,
-                "isMountain": bool(
-                    re.search(r"Frío|Semifrígido|Hielo|Glaciar|Loma", description, re.IGNORECASE)
-                )
-                or bool(re.search(r"Glaciar|Loma", code, re.IGNORECASE)),
+                "isMountain": is_mountain,
             }
     return {
         "code": "Sin codigo",
@@ -143,9 +215,9 @@ def find_climate_context(point, features):
     }
 
 
-def imagery_bbox(lon, lat, radius_km=0.9):
+def imagery_bbox(lon, lat, radius_km=ANALYSIS_RADIUS_KM):
     lat_delta = radius_km / 110.574
-    lon_delta = radius_km / (111.320 * math.cos(math.radians(lat)))
+    lon_delta = radius_km / (111.320 * max(math.cos(math.radians(lat)), 0.2))
     return (
         lon - lon_delta,
         lat - lat_delta,
@@ -154,8 +226,8 @@ def imagery_bbox(lon, lat, radius_km=0.9):
     )
 
 
-def fetch_satellite_png(lon, lat, out_path, size=384):
-    bbox = imagery_bbox(lon, lat)
+def imagery_export_url(lon, lat, radius_km=ANALYSIS_RADIUS_KM, size=IMAGE_SIZE):
+    bbox = imagery_bbox(lon, lat, radius_km=radius_km)
     params = {
         "bbox": ",".join(f"{value:.8f}" for value in bbox),
         "bboxSR": "4326",
@@ -165,11 +237,14 @@ def fetch_satellite_png(lon, lat, out_path, size=384):
         "transparent": "false",
         "f": "image",
     }
-    url = f"{WORLD_IMAGERY_EXPORT}?{urllib.parse.urlencode(params)}"
-    request = urllib.request.Request(url, headers={"User-Agent": "GeoportalLima/1.0"})
+    return f"{WORLD_IMAGERY_EXPORT}?{urllib.parse.urlencode(params)}"
+
+
+def fetch_satellite_png(lon, lat, size=IMAGE_SIZE, radius_km=ANALYSIS_RADIUS_KM):
+    url = imagery_export_url(lon, lat, radius_km=radius_km, size=size)
+    request = urllib.request.Request(url, headers={"User-Agent": "GeoportalLima/2.0"})
     with urllib.request.urlopen(request, timeout=60) as response:
         payload = response.read()
-    out_path.write_bytes(payload)
     return payload, url
 
 
@@ -276,6 +351,16 @@ def construction_label(score):
     return "Bajo"
 
 
+def heat_label(frequency):
+    if frequency >= 1.2:
+        return "Muy alta"
+    if frequency >= 0.9:
+        return "Alta"
+    if frequency >= 0.6:
+        return "Media"
+    return "Baja"
+
+
 def priority_score(heat_frequency, hazard_level, construction_index):
     heat_score = min(max(heat_frequency / 1.35, 0), 1)
     hazard_score = HAZARD_SCORE.get(hazard_level, 0)
@@ -283,77 +368,251 @@ def priority_score(heat_frequency, hazard_level, construction_index):
     return round(value, 3)
 
 
-def main():
-    SATELLITE_DIR.mkdir(parents=True, exist_ok=True)
+def interpolate_heat(lon, lat, stations):
+    weighted_sum = 0.0
+    total_weight = 0.0
+    distances = []
 
+    for station in stations:
+        distance = haversine_km(lat, lon, station["lat"], station["lon"])
+        distances.append((distance, station))
+        if distance < 0.8:
+            return {
+                "frequency": station["frequency"],
+                "label": heat_label(station["frequency"]),
+                "nearestStation": station["name"],
+                "nearestDistanceKm": round(distance, 1),
+                "contributors": [station["name"]],
+            }
+        weight = 1.0 / ((distance + 1.5) ** 2.1)
+        weighted_sum += station["frequency"] * weight
+        total_weight += weight
+
+    distances.sort(key=lambda item: item[0])
+    value = weighted_sum / max(total_weight, 1e-9)
+    return {
+        "frequency": round(value, 3),
+        "label": heat_label(value),
+        "nearestStation": distances[0][1]["name"],
+        "nearestDistanceKm": round(distances[0][0], 1),
+        "contributors": [entry[1]["name"] for entry in distances[:3]],
+    }
+
+
+def station_preview(feature):
+    lon, lat = feature["geometry"]["coordinates"]
+    return imagery_export_url(lon, lat, radius_km=ANALYSIS_RADIUS_KM, size=IMAGE_SIZE)
+
+
+def build_station_seed(feature):
+    props = feature["properties"]
+    lon, lat = feature["geometry"]["coordinates"]
+    name = decode_text(props.get("nombre", "Estacion"))
+    return {
+        "id": f"station-{props.get('cod_anteri', slugify(name))}",
+        "name": name,
+        "department": decode_text(props.get("departamen", "LIMA")),
+        "lat": round(lat, 6),
+        "lon": round(lon, 6),
+        "frequency": round(float(props.get("frecuencia", 0)), 3),
+        "eventCount": int(props.get("conteo_eve", 0)),
+        "summerDays": int(props.get("sum_dias_o", 0)),
+        "heatCategory": decode_text(props.get("cat_frecue", "Sin dato")),
+        "heatLabel": decode_text(props.get("categoria", "Sin dato")),
+        "type": decode_text(props.get("tipo", "Sin dato")),
+        "satellitePreview": station_preview(feature),
+    }
+
+
+def grid_cells(boundary_feature, spacing_km=GRID_SPACING_KM):
+    bbox = feature_bbox(boundary_feature)
+    lat_step = spacing_km / 110.574
+    cells = []
+    row = 0
+    lat = bbox["minY"] + lat_step / 2
+
+    while lat <= bbox["maxY"] - lat_step / 2:
+        row += 1
+        lon_step = spacing_km / (111.320 * max(math.cos(math.radians(lat)), 0.2))
+        col = 0
+        lon = bbox["minX"] + lon_step / 2
+        while lon <= bbox["maxX"] - lon_step / 2:
+            if point_in_feature((lon, lat), boundary_feature):
+                col += 1
+                half_lon = lon_step / 2
+                half_lat = lat_step / 2
+                ring = [
+                    [round(lon - half_lon, 6), round(lat - half_lat, 6)],
+                    [round(lon + half_lon, 6), round(lat - half_lat, 6)],
+                    [round(lon + half_lon, 6), round(lat + half_lat, 6)],
+                    [round(lon - half_lon, 6), round(lat + half_lat, 6)],
+                    [round(lon - half_lon, 6), round(lat - half_lat, 6)],
+                ]
+                cells.append(
+                    {
+                        "id": f"cell-{len(cells) + 1:03d}",
+                        "name": f"Sector regional {len(cells) + 1:03d}",
+                        "row": row,
+                        "col": col,
+                        "lat": round(lat, 6),
+                        "lon": round(lon, 6),
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [ring],
+                        },
+                    }
+                )
+            lon += lon_step
+        lat += lat_step
+
+    return cells
+
+
+def enrich_station(station_seed, hazard_features, climate_features, mountain_features):
+    payload, preview_url = fetch_satellite_png(station_seed["lon"], station_seed["lat"])
+    metrics = analyze_satellite(payload)
+    hazard_info = find_hazard((station_seed["lon"], station_seed["lat"]), hazard_features)
+    climate_context = find_climate_context((station_seed["lon"], station_seed["lat"]), climate_features)
+    mountain_context = find_mountain_context((station_seed["lon"], station_seed["lat"]), mountain_features)
+
+    station_seed["hazardLevel"] = hazard_info["level"]
+    station_seed["hazardRange"] = hazard_info["range"]
+    station_seed["climateCode"] = climate_context["code"]
+    station_seed["climateDescription"] = climate_context["description"]
+    station_seed["mountainZone"] = climate_context["isMountain"]
+    station_seed["mountainContext"] = mountain_context
+    station_seed["constructionIndex"] = metrics["constructionIndex"]
+    station_seed["constructionLabel"] = construction_label(metrics["constructionIndex"])
+    station_seed["satelliteMetrics"] = metrics
+    station_seed["satellitePreview"] = preview_url
+    station_seed["priorityScore"] = priority_score(
+        station_seed["frequency"],
+        station_seed["hazardLevel"],
+        station_seed["constructionIndex"],
+    )
+    return station_seed
+
+
+def enrich_cell(cell_seed, stations, hazard_features, climate_features, mountain_features):
+    payload, preview_url = fetch_satellite_png(cell_seed["lon"], cell_seed["lat"])
+    metrics = analyze_satellite(payload)
+    heat_info = interpolate_heat(cell_seed["lon"], cell_seed["lat"], stations)
+    hazard_info = find_hazard((cell_seed["lon"], cell_seed["lat"]), hazard_features)
+    climate_context = find_climate_context((cell_seed["lon"], cell_seed["lat"]), climate_features)
+    mountain_context = find_mountain_context((cell_seed["lon"], cell_seed["lat"]), mountain_features)
+
+    cell_seed["nearestStation"] = heat_info["nearestStation"]
+    cell_seed["nearestStationDistanceKm"] = heat_info["nearestDistanceKm"]
+    cell_seed["heatContributors"] = heat_info["contributors"]
+    cell_seed["frequency"] = heat_info["frequency"]
+    cell_seed["heatLabel"] = heat_info["label"]
+    cell_seed["hazardLevel"] = hazard_info["level"]
+    cell_seed["hazardRange"] = hazard_info["range"]
+    cell_seed["climateCode"] = climate_context["code"]
+    cell_seed["climateDescription"] = climate_context["description"]
+    cell_seed["mountainZone"] = climate_context["isMountain"]
+    cell_seed["mountainContext"] = mountain_context
+    cell_seed["constructionIndex"] = metrics["constructionIndex"]
+    cell_seed["constructionLabel"] = construction_label(metrics["constructionIndex"])
+    cell_seed["satelliteMetrics"] = metrics
+    cell_seed["satellitePreview"] = preview_url
+    cell_seed["priorityScore"] = priority_score(
+        cell_seed["frequency"],
+        cell_seed["hazardLevel"],
+        cell_seed["constructionIndex"],
+    )
+    return cell_seed
+
+
+def run_parallel(items, fn, workers=WORKERS):
+    results = []
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        future_map = {executor.submit(fn, item): item for item in items}
+        for future in as_completed(future_map):
+            results.append(future.result())
+    return results
+
+
+def make_boundary_payload(boundary_feature):
+    props = boundary_feature.get("properties", {})
+    return {
+        "type": "Feature",
+        "properties": {
+            "name": decode_text(props.get("NOMBDEP", "LIMA")),
+            "code": decode_text(props.get("CCDD", "15")),
+            "source": decode_text(props.get("FUENTE", "IGN")),
+        },
+        "geometry": boundary_feature["geometry"],
+    }
+
+
+def main():
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    boundary_geojson = load_or_fetch_geojson(BOUNDARY_CACHE, LIMA_BOUNDARY_URL)
+    boundary_feature = boundary_geojson["features"][0]
     heatwave = load_geojson(HEATWAVE_FILE)
     hazard = load_geojson(HAZARD_FILE)
     mountains = load_geojson(MOUNTAIN_FILE)
     climate = load_geojson(CLIMATE_FILE)
 
-    points = []
-    for feature in heatwave["features"]:
-        props = feature["properties"]
-        lon, lat = feature["geometry"]["coordinates"]
-        name = decode_text(props["nombre"])
-        slug = slugify(name)
-        image_path = SATELLITE_DIR / f"{slug}.png"
-        payload, satellite_url = fetch_satellite_png(lon, lat, image_path)
-        satellite_metrics = analyze_satellite(payload)
-        hazard_info = find_hazard((lon, lat), hazard["features"])
-        mountain_context = find_mountain_context((lon, lat), mountains["features"])
-        climate_context = find_climate_context((lon, lat), climate["features"])
+    station_seeds = [build_station_seed(feature) for feature in heatwave["features"]]
+    stations = run_parallel(
+        station_seeds,
+        lambda seed: enrich_station(
+            seed,
+            hazard["features"],
+            climate["features"],
+            mountains["features"],
+        ),
+    )
+    stations.sort(key=lambda item: item["name"])
 
-        point_record = {
-            "id": str(props.get("cod_anteri", name)),
-            "name": name,
-            "department": decode_text(props.get("departamen", "LIMA")),
-            "lat": round(lat, 6),
-            "lon": round(lon, 6),
-            "frequency": round(float(props.get("frecuencia", 0)), 3),
-            "eventCount": int(props.get("conteo_eve", 0)),
-            "summerDays": int(props.get("sum_dias_o", 0)),
-            "heatCategory": decode_text(props.get("cat_frecue", "Sin dato")),
-            "heatLabel": decode_text(props.get("categoria", "Sin dato")),
-            "type": decode_text(props.get("tipo", "Sin dato")),
-            "hazardLevel": hazard_info["level"],
-            "hazardRange": hazard_info["range"],
-            "climateCode": climate_context["code"],
-            "climateDescription": climate_context["description"],
-            "mountainZone": climate_context["isMountain"],
-            "constructionIndex": satellite_metrics["constructionIndex"],
-            "constructionLabel": construction_label(satellite_metrics["constructionIndex"]),
-            "satelliteMetrics": satellite_metrics,
-            "satelliteThumb": f"data/satellite_samples/{slug}.png",
-            "satelliteSource": satellite_url,
-            "mountainContext": mountain_context,
-        }
-        point_record["priorityScore"] = priority_score(
-            point_record["frequency"],
-            point_record["hazardLevel"],
-            point_record["constructionIndex"],
-        )
-        points.append(point_record)
+    cell_seeds = grid_cells(boundary_feature)
+    cells = run_parallel(
+        cell_seeds,
+        lambda seed: enrich_cell(
+            seed,
+            stations,
+            hazard["features"],
+            climate["features"],
+            mountains["features"],
+        ),
+    )
+    cells.sort(key=lambda item: item["id"])
 
-    points.sort(key=lambda item: (-item["priorityScore"], -item["constructionIndex"], -item["frequency"]))
+    ranked_cells = sorted(
+        cells,
+        key=lambda item: (-item["priorityScore"], -item["constructionIndex"], -item["frequency"]),
+    )
 
     output = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "analysisMethod": {
             "imagery": "Esri World Imagery export",
-            "windowRadiusKm": 0.9,
-            "sizePx": 384,
+            "windowRadiusKm": ANALYSIS_RADIUS_KM,
+            "sizePx": IMAGE_SIZE,
+            "gridSpacingKm": GRID_SPACING_KM,
+            "heatInterpolation": "IDW sobre estaciones SENAMHI de Lima",
             "rule": (
-                "Construccion estimada por combinacion local de superficie impermeable, textura/edges "
-                "y presencia de tonos grises, con penalizacion por suelo desnudo."
+                "Construccion estimada por combinacion local de superficie impermeable, "
+                "textura y tonos grises, con penalizacion por suelo desnudo."
             ),
         },
-        "points": points,
+        "region": {
+            "name": "Region Lima",
+            "sourceLabel": "IGN - Limite departamental oficial",
+            "sourceUrl": LIMA_BOUNDARY_URL,
+            "boundary": make_boundary_payload(boundary_feature),
+        },
+        "stations": stations,
+        "points": stations,
+        "cells": cells,
+        "topCells": ranked_cells[:12],
     }
 
-    serialized = json.dumps(output, ensure_ascii=False, indent=2)
     OUTPUT_JS.write_text(
-        f"window.GEOPORTAL_LIMA_DATA = {serialized};\n",
+        f"window.GEOPORTAL_LIMA_DATA = {json.dumps(output, ensure_ascii=False)};\n",
         encoding="utf-8",
     )
 
@@ -363,24 +622,27 @@ def main():
             {
                 "type": "Feature",
                 "properties": {
-                    "codigo": decode_text(feature["properties"].get("codigo", "Sin codigo")),
-                    "descripcion": decode_text(
-                        feature["properties"].get("descripcion", "Sin descripcion")
-                    ),
-                    "area_km2": feature["properties"].get("area_km2"),
+                    "id": cell["id"],
+                    "codigo": cell["climateCode"],
+                    "descripcion": cell["climateDescription"],
+                    "priorityScore": cell["priorityScore"],
+                    "constructionIndex": cell["constructionIndex"],
                 },
-                "geometry": feature["geometry"],
+                "geometry": cell["geometry"],
             }
-            for feature in mountains["features"]
+            for cell in cells
+            if cell["mountainZone"]
         ],
     }
     MOUNTAIN_JS.write_text(
         f"window.GEOPORTAL_LIMA_MOUNTAINS = {json.dumps(mountain_payload, ensure_ascii=False)};\n",
         encoding="utf-8",
     )
+
     print(f"Generated {OUTPUT_JS}")
     print(f"Generated {MOUNTAIN_JS}")
-    print(f"Points analyzed: {len(points)}")
+    print(f"Stations analyzed: {len(stations)}")
+    print(f"Regional cells analyzed: {len(cells)}")
 
 
 if __name__ == "__main__":

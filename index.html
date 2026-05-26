@@ -26,12 +26,12 @@
     <div class="app-shell">
       <header class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Lima · análisis urbanístico y calor</p>
-          <h1>Geoportal térmico-urbanístico con fuentes oficiales del Perú</h1>
+          <p class="eyebrow">Región Lima · análisis urbanístico y calor</p>
+          <h1>Geoportal térmico-urbanístico para toda la región Lima</h1>
           <p class="hero-text">
-            Cruza puntos de calor de verano de SENAMHI con vulnerabilidad climática futura
+            Cruza estaciones de calor de SENAMHI con vulnerabilidad climática futura
             y un índice constructivo calculado localmente desde imágenes satelitales.
-            Los resultados quedan marcados sobre Lima desde la apertura del archivo.
+            Los resultados ahora cubren toda la región Lima mediante una malla regional.
           </p>
         </div>
         <div class="hero-badges">
@@ -53,22 +53,22 @@
               <label class="toggle-card">
                 <input type="checkbox" id="toggle-heatwave" checked>
                 <span class="toggle-main">
-                  <strong>Puntos de calor observados</strong>
-                  <small>SENAMHI · frecuencia de verano en Lima</small>
+                  <strong>Estaciones de calor observadas</strong>
+                  <small>SENAMHI · frecuencia de verano usada como base térmica</small>
                 </span>
               </label>
               <label class="toggle-card">
                 <input type="checkbox" id="toggle-hazard" checked>
                 <span class="toggle-main">
-                  <strong>Índice constructivo satelital</strong>
-                  <small>Buffers calculados localmente sobre imagen World Imagery</small>
+                  <strong>Malla regional de análisis</strong>
+                  <small>Celdas de toda la región Lima calculadas localmente sobre satélite</small>
                 </span>
               </label>
               <label class="toggle-card">
                 <input type="checkbox" id="toggle-mountains">
                 <span class="toggle-main">
                   <strong>Zonas de montaña</strong>
-                  <small>Polígonos y puntos ligados a lomas o clases frías en Lima</small>
+                  <small>Celdas serranas o de loma dentro de la región Lima</small>
                 </span>
               </label>
               <label class="toggle-card">
@@ -119,8 +119,8 @@
               <h2>Notas de lectura</h2>
             </div>
             <ul class="notes-list">
-              <li>El índice constructivo usa recortes satelitales locales alrededor de cada punto.</li>
-              <li>La prioridad combina calor observado, vulnerabilidad térmica y ocupación construida.</li>
+              <li>El índice constructivo usa muestras satelitales locales sobre una malla regional.</li>
+              <li>La prioridad combina calor interpolado, vulnerabilidad térmica y ocupación construida.</li>
               <li>La capa de montaña sigue siendo contexto territorial, no reemplaza un DEM o pendiente.</li>
             </ul>
           </section>
@@ -133,7 +133,7 @@
               <p class="overlay-label">Enfoque del visor</p>
               <strong id="focus-title">Lima y sus contrastes térmicos</strong>
               <p id="focus-description">
-                El panel resalta puntos de calor y el índice constructivo calculado desde satélite.
+                El panel resalta celdas regionales de calor y el índice constructivo calculado desde satélite.
               </p>
             </div>
           </div>
@@ -141,7 +141,7 @@
             <div class="legend-card">
               <h3>Leyenda rápida</h3>
               <div class="legend-group">
-                <p>Frecuencia de olas de calor</p>
+                <p>Frecuencia térmica</p>
                 <span><i class="dot freq-low"></i> Baja</span>
                 <span><i class="dot freq-medium"></i> Media</span>
                 <span><i class="dot freq-high"></i> Alta</span>
@@ -169,23 +169,23 @@
           <section class="section-block">
             <div class="section-heading">
               <h2>Resumen ejecutivo</h2>
-              <p>Lectura directa para priorizar territorio sobre satélite.</p>
+              <p>Lectura directa para priorizar territorio sobre toda la región.</p>
             </div>
             <div class="metric-grid">
               <article class="metric-card">
-                <span class="metric-label">Puntos analizados</span>
+                <span class="metric-label">Celdas regionales</span>
                 <strong id="metric-points">--</strong>
               </article>
               <article class="metric-card">
-                <span class="metric-label">Vulnerabilidad media+</span>
+                <span class="metric-label">Celdas vulnerables</span>
                 <strong id="metric-risk">--</strong>
               </article>
               <article class="metric-card">
-                <span class="metric-label">Frecuencia máxima</span>
+                <span class="metric-label">Calor máximo</span>
                 <strong id="metric-peak">--</strong>
               </article>
               <article class="metric-card">
-                <span class="metric-label">Índice constructivo medio</span>
+                <span class="metric-label">Construcción media</span>
                 <strong id="metric-construction">--</strong>
               </article>
             </div>
@@ -193,7 +193,7 @@
 
           <section class="section-block">
             <div class="section-heading">
-              <h2>Puntos prioritarios</h2>
+              <h2>Sectores prioritarios</h2>
               <p>Cruce entre calor, vulnerabilidad y ocupación construida.</p>
             </div>
             <div id="ranking-list" class="ranking-list"></div>
@@ -210,7 +210,7 @@
             <div class="section-heading">
               <h2>Estado</h2>
             </div>
-            <div id="app-status" class="status-box">Preparando resultados locales de Lima…</div>
+            <div id="app-status" class="status-box">Preparando resultados regionales de Lima…</div>
           </section>
         </aside>
       </main>

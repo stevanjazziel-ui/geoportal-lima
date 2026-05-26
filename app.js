@@ -5,13 +5,13 @@ const LIMA_BOUNDS = [
 
 const REMOTE_LAYERS = {
   climate: {
-    title: "SENAMHI · Clasificación Climática 1981-2010",
+    title: "SENAMHI · Clasificacion climatica 1981-2010",
     url: "https://idesep.senamhi.gob.pe:443/geoserver/g_05_01/wms?",
     layers: "g_05_01:05_01_001_03_001_512_2021_00_00",
     options: { format: "image/png", transparent: true, opacity: 0.42 },
   },
   construction: {
-    title: "ICL · Proyectos de construcción",
+    title: "ICL · Proyectos de construccion",
     url: "https://ide.icl.gob.pe:8443/geoserver/IDEP/idep_tg_construccion/wms",
     layers: "IDEP:idep_tg_construccion",
     options: { format: "image/png", transparent: true, opacity: 0.74 },
@@ -23,7 +23,7 @@ const REMOTE_LAYERS = {
     options: { format: "image/png", transparent: true, opacity: 0.45 },
   },
   parks: {
-    title: "ICL · Áreas verdes",
+    title: "ICL · Areas verdes",
     url: "https://ide.icl.gob.pe:8443/geoserver/IDEP/idep_tg_parques/wms",
     layers: "IDEP:idep_tg_parques",
     options: { format: "image/png", transparent: true, opacity: 0.68 },
@@ -32,15 +32,19 @@ const REMOTE_LAYERS = {
 
 const SOURCES = [
   {
-    label: "SENAMHI · Catálogo IDESEP",
+    label: "SENAMHI · Catalogo IDESEP",
     url: "https://idesep.senamhi.gob.pe/portalidesep/wms.do",
   },
   {
-    label: "GeoIDEP · Catálogo del Instituto Catastral de Lima",
+    label: "GeoIDEP · Catalogo del Instituto Catastral de Lima",
     url: "https://www.geoidep.gob.pe/catalogo-nacional-de-servicios-web?id_institucion=268&search_token=oweq8Q37yv5EdudwlRyms46dQWlEyHD5OPYy3U2nQJw",
   },
   {
-    label: "Esri World Imagery · base satelital usada para el índice local",
+    label: "IGN · Limite departamental oficial de Lima",
+    url: "https://www.idep.gob.pe/geoportal/rest/services/DATOS_GEOESPACIALES/L%C3%8DMITES/FeatureServer/3/query?where=NOMBDEP%3D%27LIMA%27&outFields=*&returnGeometry=true&f=geojson",
+  },
+  {
+    label: "Esri World Imagery · base satelital usada para el indice local",
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
   },
 ];
@@ -56,13 +60,14 @@ const HAZARD_ORDER = {
 const state = {
   data: null,
   map: null,
-  markerLayer: null,
-  bufferLayer: null,
+  boundaryLayer: null,
+  cellLayer: null,
+  stationLayer: null,
   rankingPinsLayer: null,
   mountainLayer: null,
-  mountainPointLayer: null,
   remoteLayers: new Map(),
-  markerById: new Map(),
+  cellById: new Map(),
+  stationById: new Map(),
   sortedByPriority: [],
 };
 
@@ -130,18 +135,17 @@ function initMap() {
 }
 
 function wireToggles() {
-  bindToggle("toggle-heatwave", (checked) => toggleLeafletLayer(state.markerLayer, checked));
-  bindToggle("toggle-hazard", (checked) => toggleLeafletLayer(state.bufferLayer, checked));
+  bindToggle("toggle-heatwave", (checked) => toggleLeafletLayer(state.stationLayer, checked));
+  bindToggle("toggle-hazard", (checked) => toggleLeafletLayer(state.cellLayer, checked));
   bindToggle("toggle-climate", (checked) => toggleRemoteLayer("climate", checked));
   bindToggle("toggle-construction", (checked) => toggleRemoteLayer("construction", checked));
   bindToggle("toggle-blocks", (checked) => toggleRemoteLayer("blocks", checked));
   bindToggle("toggle-parks", (checked) => toggleRemoteLayer("parks", checked));
-  bindToggle("toggle-mountains", async (checked) => {
-    if (checked) {
-      await ensureMountainLayers();
+  bindToggle("toggle-mountains", (checked) => {
+    if (!state.mountainLayer) {
+      drawMountainCells();
     }
     toggleLeafletLayer(state.mountainLayer, checked);
-    toggleLeafletLayer(state.mountainPointLayer, checked);
   });
 }
 
@@ -151,150 +155,157 @@ function bindToggle(id, handler) {
   input.addEventListener("change", (event) => {
     Promise.resolve(handler(event.target.checked)).catch((error) => {
       console.error(error);
-      setStatus("Una capa externa no respondió, pero el análisis local sigue visible.", "warn");
+      setStatus("Una capa externa no respondio, pero el analisis regional sigue visible.", "warn");
     });
   });
 }
 
 function loadPreparedData() {
   const prepared = window.GEOPORTAL_LIMA_DATA;
-  if (!prepared || !Array.isArray(prepared.points)) {
-    setStatus("No se encontró el dataset local preparado. Ejecuta el generador de análisis.", "error");
+  if (!prepared || !Array.isArray(prepared.cells) || !Array.isArray(prepared.stations)) {
+    setStatus("No se encontro el dataset regional preparado. Ejecuta el generador de analisis.", "error");
     return;
   }
 
   state.data = prepared;
-  state.sortedByPriority = [...prepared.points].sort(
+  state.sortedByPriority = [...prepared.cells].sort(
     (a, b) => b.priorityScore - a.priorityScore || b.constructionIndex - a.constructionIndex
   );
 
-  drawAnalysisBuffers();
-  drawHeatMarkers();
+  drawRegionBoundary();
+  drawRegionalCells();
+  drawHeatStations();
   drawRankingPins();
   renderSources();
   updateMetrics();
   renderRanking();
   updateFocusCard();
   setStatus(
-    `Resultados listos. Se analizaron ${prepared.points.length} puntos con imágenes satelitales locales de ${
-      prepared.analysisMethod.imagery
-    }.`,
+    `Resultados listos. Se analizaron ${prepared.cells.length} celdas sobre toda la region Lima y ${prepared.stations.length} estaciones base de SENAMHI.`,
     "ok"
   );
 
   dom.iclStatus.textContent =
-    "Las capas del ICL quedan como apoyo cartográfico. El índice de construcción visible ya fue calculado localmente con recortes satelitales.";
+    "Las capas del ICL quedan como apoyo. El indice principal ya fue calculado localmente para toda la region Lima con malla satelital.";
 }
 
-function drawAnalysisBuffers() {
-  if (!state.data) return;
+function drawRegionBoundary() {
+  const boundary = state.data.region?.boundary;
+  if (!boundary) return;
 
-  state.bufferLayer = L.layerGroup(
-    state.data.points.map((point) => {
-      const buffer = L.circle([point.lat, point.lon], {
-        radius: 320 + point.constructionIndex * 680,
-        color: getHazardColor(point.hazardLevel),
-        weight: 2,
+  state.boundaryLayer = L.geoJSON(boundary, {
+    style() {
+      return {
+        color: "#f6f0e2",
+        weight: 2.4,
         opacity: 0.95,
-        fillColor: getConstructionColor(point.constructionIndex),
-        fillOpacity: 0.24,
-      });
-      buffer.bindPopup(buildPopupHtml(point));
-      return buffer;
-    })
-  );
+        fillOpacity: 0,
+        dashArray: "8 6",
+      };
+    },
+  }).addTo(state.map);
 
-  state.bufferLayer.addTo(state.map);
+  state.map.fitBounds(state.boundaryLayer.getBounds(), { padding: [22, 22] });
 }
 
-function drawHeatMarkers() {
-  if (!state.data) return;
+function drawRegionalCells() {
+  const featureCollection = {
+    type: "FeatureCollection",
+    features: state.data.cells.map((cell) => ({
+      type: "Feature",
+      properties: cell,
+      geometry: cell.geometry,
+    })),
+  };
 
-  state.markerLayer = L.layerGroup();
-  state.markerById.clear();
-
-  state.data.points.forEach((point) => {
-    const marker = L.circleMarker([point.lat, point.lon], {
-      radius: 6 + point.frequency * 5.5,
-      color: "#fff7ee",
-      weight: 2,
-      fillColor: getFrequencyColor(point.frequency),
-      fillOpacity: 0.98,
-    });
-    marker.bindPopup(buildPopupHtml(point));
-    state.markerById.set(point.id, marker);
-    state.markerLayer.addLayer(marker);
+  state.cellById.clear();
+  state.cellLayer = L.geoJSON(featureCollection, {
+    style(feature) {
+      const cell = feature.properties;
+      return {
+        color: getHazardColor(cell.hazardLevel),
+        weight: 0.9 + cell.priorityScore * 1.2,
+        opacity: 0.82,
+        fillColor: getConstructionColor(cell.constructionIndex),
+        fillOpacity: 0.18 + cell.priorityScore * 0.22,
+      };
+    },
+    onEachFeature(feature, layerRef) {
+      const cell = feature.properties;
+      layerRef.bindPopup(buildCellPopupHtml(cell));
+      state.cellById.set(cell.id, layerRef);
+    },
   });
 
-  state.markerLayer.addTo(state.map);
+  state.cellLayer.addTo(state.map);
+}
+
+function drawHeatStations() {
+  state.stationById.clear();
+  state.stationLayer = L.layerGroup();
+
+  state.data.stations.forEach((station) => {
+    const marker = L.circleMarker([station.lat, station.lon], {
+      radius: 4 + station.frequency * 5.2,
+      color: "#fff8ee",
+      weight: 2,
+      fillColor: getFrequencyColor(station.frequency),
+      fillOpacity: 0.98,
+    });
+    marker.bindPopup(buildStationPopupHtml(station));
+    state.stationById.set(station.id, marker);
+    state.stationLayer.addLayer(marker);
+  });
+
+  state.stationLayer.addTo(state.map);
 }
 
 function drawRankingPins() {
-  if (!state.data) return;
-
   state.rankingPinsLayer = L.layerGroup();
 
-  state.sortedByPriority.slice(0, 5).forEach((point, index) => {
-    const marker = L.marker([point.lat, point.lon], {
+  state.sortedByPriority.slice(0, 8).forEach((cell, index) => {
+    const marker = L.marker([cell.lat, cell.lon], {
       icon: L.divIcon({
         className: "rank-pin-wrapper",
-        html: `<span class="rank-pin rank-${index + 1}">${index + 1}</span>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
+        html: `<span class="rank-pin rank-${Math.min(index + 1, 5)}">${index + 1}</span>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
       }),
     });
-    marker.bindPopup(buildPopupHtml(point));
+    marker.bindPopup(buildCellPopupHtml(cell));
     state.rankingPinsLayer.addLayer(marker);
   });
 
   state.rankingPinsLayer.addTo(state.map);
 }
 
-async function ensureMountainLayers() {
-  if (!window.GEOPORTAL_LIMA_MOUNTAINS) {
-    await loadScript("data/lima_mountain_zones.js");
-  }
+function drawMountainCells() {
+  const featureCollection = {
+    type: "FeatureCollection",
+    features: state.data.cells
+      .filter((cell) => cell.mountainZone || (cell.mountainContext && cell.mountainContext.length))
+      .map((cell) => ({
+        type: "Feature",
+        properties: cell,
+        geometry: cell.geometry,
+      })),
+  };
 
-  if (!state.mountainLayer) {
-    state.mountainLayer = L.geoJSON(window.GEOPORTAL_LIMA_MOUNTAINS, {
-      style() {
-        return {
-          color: "#4d402d",
-          weight: 1.2,
-          opacity: 0.8,
-          fillColor: "#8c7551",
-          fillOpacity: 0.16,
-        };
-      },
-      onEachFeature(feature, layerRef) {
-        const props = feature.properties || {};
-        layerRef.bindPopup(
-          `<strong class="popup-title">Zona de montaña</strong><div class="popup-grid"><span><strong>Clase:</strong> ${escapeHtml(
-            props.codigo || "Sin código"
-          )}</span><span>${escapeHtml(props.descripcion || "Sin descripción")}</span></div>`
-        );
-      },
-    });
-  }
-
-  if (!state.mountainPointLayer) {
-    const mountainPoints = state.data.points.filter(
-      (point) => point.mountainZone || (point.mountainContext && point.mountainContext.length)
-    );
-    state.mountainPointLayer = L.layerGroup(
-      mountainPoints.map((point) => {
-        const marker = L.circleMarker([point.lat, point.lon], {
-          radius: 9,
-          color: "#fdf4e9",
-          weight: 2,
-          fillColor: "#6f5e48",
-          fillOpacity: 0.95,
-        });
-        marker.bindPopup(buildPopupHtml(point));
-        return marker;
-      })
-    );
-  }
+  state.mountainLayer = L.geoJSON(featureCollection, {
+    style() {
+      return {
+        color: "#4d402d",
+        weight: 1.1,
+        opacity: 0.84,
+        fillColor: "#8c7551",
+        fillOpacity: 0.28,
+      };
+    },
+    onEachFeature(feature, layerRef) {
+      const cell = feature.properties;
+      layerRef.bindPopup(buildCellPopupHtml(cell));
+    },
+  });
 }
 
 function toggleRemoteLayer(key, visible) {
@@ -323,54 +334,54 @@ function toggleLeafletLayer(layer, visible) {
 }
 
 function updateMetrics() {
-  const points = state.data.points;
-  const mediumPlus = points.filter((point) => HAZARD_ORDER[point.hazardLevel] >= HAZARD_ORDER.Medio).length;
-  const peakFrequency = points.reduce((max, point) => Math.max(max, point.frequency), 0);
+  const cells = state.data.cells;
+  const mediumPlus = cells.filter((cell) => HAZARD_ORDER[cell.hazardLevel] >= HAZARD_ORDER.Medio).length;
+  const peakFrequency = cells.reduce((max, cell) => Math.max(max, cell.frequency), 0);
   const avgConstruction =
-    points.reduce((sum, point) => sum + Number(point.constructionIndex || 0), 0) / points.length;
+    cells.reduce((sum, cell) => sum + Number(cell.constructionIndex || 0), 0) / cells.length;
 
-  dom.metricPoints.textContent = String(points.length);
+  dom.metricPoints.textContent = String(cells.length);
   dom.metricRisk.textContent = String(mediumPlus);
-  dom.metricPeak.textContent = peakFrequency.toFixed(1);
+  dom.metricPeak.textContent = peakFrequency.toFixed(2);
   dom.metricConstruction.textContent = avgConstruction.toFixed(2);
 }
 
 function renderRanking() {
   dom.rankingList.innerHTML = "";
 
-  state.sortedByPriority.forEach((point, index) => {
+  state.sortedByPriority.slice(0, 14).forEach((cell, index) => {
     const item = document.createElement("article");
     item.className = "ranking-item";
     item.innerHTML = `
       <div class="ranking-topline">
-        <strong>${index + 1}. ${escapeHtml(point.name)}</strong>
-        <span class="ranking-score">prioridad ${point.priorityScore.toFixed(2)}</span>
+        <strong>${index + 1}. ${escapeHtml(cell.name)}</strong>
+        <span class="ranking-score">prioridad ${cell.priorityScore.toFixed(2)}</span>
       </div>
       <div class="ranking-meta">
-        <span class="ranking-chip">Construcción ${point.constructionIndex.toFixed(2)}</span>
-        <span class="ranking-chip">Calor ${point.frequency.toFixed(1)}</span>
-        <span class="ranking-chip">Riesgo ${escapeHtml(point.hazardLevel)}</span>
+        <span class="ranking-chip">Construccion ${cell.constructionIndex.toFixed(2)}</span>
+        <span class="ranking-chip">Calor ${cell.frequency.toFixed(2)}</span>
+        <span class="ranking-chip">Riesgo ${escapeHtml(cell.hazardLevel)}</span>
       </div>
       <p class="ranking-text">
-        ${escapeHtml(point.heatLabel)} · ${escapeHtml(point.climateDescription)} · ${
-          point.mountainZone ? "relación directa con montaña/loma." : "contexto no montañoso en la clasificación puntual."
+        Cerca de ${escapeHtml(cell.nearestStation)} · ${escapeHtml(cell.climateDescription)} · ${
+          cell.mountainZone ? "celda serrana o de loma." : "celda no serrana."
         }
       </p>
     `;
 
-    item.addEventListener("click", () => focusPoint(point.id));
+    item.addEventListener("click", () => focusCell(cell.id));
     dom.rankingList.appendChild(item);
   });
 }
 
 function updateFocusCard() {
   const topPriority = state.sortedByPriority[0];
-  const topConstruction = [...state.data.points].sort((a, b) => b.constructionIndex - a.constructionIndex)[0];
+  const topConstruction = [...state.data.cells].sort((a, b) => b.constructionIndex - a.constructionIndex)[0];
 
   dom.focusTitle.textContent = `${topPriority.name} lidera el cruce calor + vulnerabilidad`;
   dom.focusDescription.textContent =
-    `${topPriority.name} alcanza prioridad ${topPriority.priorityScore.toFixed(2)}. ` +
-    `${topConstruction.name} es el punto con mayor índice constructivo satelital (${topConstruction.constructionIndex.toFixed(
+    `${topPriority.name} alcanza prioridad ${topPriority.priorityScore.toFixed(2)} y se apoya en la estacion ${topPriority.nearestStation}. ` +
+    `${topConstruction.name} muestra el mayor indice constructivo regional (${topConstruction.constructionIndex.toFixed(
       2
     )}).`;
 }
@@ -381,8 +392,8 @@ function renderSources() {
     : "Sin fecha";
 
   const methodEntry = {
-    label: `Archivo local generado: ${generatedAt}`,
-    url: state.data.points[0]?.satelliteSource || SOURCES[2].url,
+    label: `Archivo regional generado: ${generatedAt}`,
+    url: state.data.region?.sourceUrl || SOURCES[2].url,
   };
 
   dom.sourceList.innerHTML = [...SOURCES, methodEntry]
@@ -393,52 +404,73 @@ function renderSources() {
     .join("");
 }
 
-function focusPoint(pointId) {
-  const point = state.data.points.find((entry) => entry.id === pointId);
-  const marker = state.markerById.get(pointId);
-  if (!point || !marker) return;
-  state.map.flyTo([point.lat, point.lon], 12, { duration: 0.7 });
-  marker.openPopup();
+function focusCell(cellId) {
+  const cell = state.data.cells.find((entry) => entry.id === cellId);
+  const layer = state.cellById.get(cellId);
+  if (!cell || !layer) return;
+  state.map.flyTo([cell.lat, cell.lon], 10, { duration: 0.7 });
+  layer.openPopup();
 }
 
-function buildPopupHtml(point) {
+function buildCellPopupHtml(cell) {
   const mountainText =
-    point.mountainZone || (point.mountainContext && point.mountainContext.length)
-      ? "Sí, ligado a montaña/loma"
+    cell.mountainZone || (cell.mountainContext && cell.mountainContext.length)
+      ? "Si, con rasgo serrano o de loma"
       : "No dominante";
 
   return `
     <div class="popup-card">
-      <h3 class="popup-title">${escapeHtml(point.name)}</h3>
-      <img class="popup-thumb" src="${point.satelliteThumb}" alt="Recorte satelital de ${escapeHtml(point.name)}">
+      <h3 class="popup-title">${escapeHtml(cell.name)}</h3>
+      <img class="popup-thumb" src="${cell.satellitePreview}" alt="Muestra satelital de ${escapeHtml(cell.name)}">
       <div class="popup-grid">
-        <span><strong>Índice constructivo:</strong> ${point.constructionIndex.toFixed(2)} (${escapeHtml(
-          point.constructionLabel
+        <span><strong>Indice constructivo:</strong> ${cell.constructionIndex.toFixed(2)} (${escapeHtml(
+          cell.constructionLabel
         )})</span>
-        <span><strong>Frecuencia de calor:</strong> ${point.frequency.toFixed(1)} · ${escapeHtml(
-          point.heatLabel
-        )}</span>
-        <span><strong>Vulnerabilidad:</strong> ${escapeHtml(point.hazardLevel)} (${escapeHtml(
-          point.hazardRange
+        <span><strong>Calor interpolado:</strong> ${cell.frequency.toFixed(2)} · ${escapeHtml(cell.heatLabel)}</span>
+        <span><strong>Vulnerabilidad:</strong> ${escapeHtml(cell.hazardLevel)} (${escapeHtml(
+          cell.hazardRange
         )})</span>
-        <span><strong>Clase climática:</strong> ${escapeHtml(point.climateDescription)}</span>
-        <span><strong>Contexto de montaña:</strong> ${escapeHtml(mountainText)}</span>
-        <span><strong>Métrica satelital:</strong> impermeable ${point.satelliteMetrics.imperviousRatio.toFixed(
+        <span><strong>Clase climatica:</strong> ${escapeHtml(cell.climateDescription)}</span>
+        <span><strong>Contexto de montana:</strong> ${escapeHtml(mountainText)}</span>
+        <span><strong>Estacion mas cercana:</strong> ${escapeHtml(cell.nearestStation)} (${cell.nearestStationDistanceKm.toFixed(
+          1
+        )} km)</span>
+        <span><strong>Metrica satelital:</strong> impermeable ${cell.satelliteMetrics.imperviousRatio.toFixed(
           2
-        )}, bordes ${point.satelliteMetrics.edgeRatio.toFixed(2)}</span>
+        )}, bordes ${cell.satelliteMetrics.edgeRatio.toFixed(2)}</span>
       </div>
     </div>
   `;
 }
 
-function loadScript(path) {
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = path;
-    script.onload = resolve;
-    script.onerror = () => reject(new Error(`No se pudo cargar ${path}`));
-    document.head.appendChild(script);
-  });
+function buildStationPopupHtml(station) {
+  const mountainText =
+    station.mountainZone || (station.mountainContext && station.mountainContext.length)
+      ? "Si, ligada a montana o loma"
+      : "No dominante";
+
+  return `
+    <div class="popup-card">
+      <h3 class="popup-title">${escapeHtml(station.name)}</h3>
+      <img class="popup-thumb" src="${station.satellitePreview}" alt="Muestra satelital de ${escapeHtml(
+        station.name
+      )}">
+      <div class="popup-grid">
+        <span><strong>Frecuencia observada:</strong> ${station.frequency.toFixed(2)} · ${escapeHtml(
+          station.heatLabel
+        )}</span>
+        <span><strong>Indice constructivo:</strong> ${station.constructionIndex.toFixed(2)} (${escapeHtml(
+          station.constructionLabel
+        )})</span>
+        <span><strong>Vulnerabilidad:</strong> ${escapeHtml(station.hazardLevel)} (${escapeHtml(
+          station.hazardRange
+        )})</span>
+        <span><strong>Clase climatica:</strong> ${escapeHtml(station.climateDescription)}</span>
+        <span><strong>Contexto de montana:</strong> ${escapeHtml(mountainText)}</span>
+        <span><strong>Eventos de calor:</strong> ${station.eventCount} en ${station.summerDays} dias observados</span>
+      </div>
+    </div>
+  `;
 }
 
 function getFrequencyColor(frequency) {
