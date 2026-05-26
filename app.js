@@ -85,6 +85,11 @@ function cacheDom() {
   dom.metricRisk = document.getElementById("metric-risk");
   dom.metricPeak = document.getElementById("metric-peak");
   dom.metricConstruction = document.getElementById("metric-construction");
+  dom.heroCellCount = document.getElementById("hero-cell-count");
+  dom.heroPeakHeat = document.getElementById("hero-peak-heat");
+  dom.heroTopSector = document.getElementById("hero-top-sector");
+  dom.heroTopStation = document.getElementById("hero-top-station");
+  dom.heroSummaryNote = document.getElementById("hero-summary-note");
   dom.rankingList = document.getElementById("ranking-list");
   dom.status = document.getElementById("app-status");
   dom.iclStatus = document.getElementById("icl-status");
@@ -178,6 +183,7 @@ function loadPreparedData() {
   drawRankingPins();
   renderSources();
   updateMetrics();
+  updateHeroSummary();
   renderRanking();
   updateFocusCard();
   setStatus(
@@ -344,6 +350,30 @@ function updateMetrics() {
   dom.metricRisk.textContent = String(mediumPlus);
   dom.metricPeak.textContent = peakFrequency.toFixed(2);
   dom.metricConstruction.textContent = avgConstruction.toFixed(2);
+}
+
+function updateHeroSummary() {
+  if (!dom.heroCellCount || !state.data?.cells?.length) return;
+
+  const topPriority = state.sortedByPriority[0];
+  const hottestCell = [...state.data.cells].sort(
+    (a, b) => b.frequency - a.frequency || b.priorityScore - a.priorityScore
+  )[0];
+  const peakStation =
+    state.data.stations.reduce(
+      (best, station) => (station.frequency > best.frequency ? station : best),
+      state.data.stations[0]
+    ) || null;
+
+  dom.heroCellCount.textContent = String(state.data.cells.length);
+  dom.heroPeakHeat.textContent = hottestCell.frequency.toFixed(2);
+  dom.heroTopSector.textContent = compactLabel(topPriority.name, 26);
+  dom.heroTopStation.textContent = compactLabel(topPriority.nearestStation || peakStation?.name || "--", 24);
+  dom.heroSummaryNote.textContent =
+    `${compactLabel(topPriority.name, 42)} lidera la prioridad regional (${topPriority.priorityScore.toFixed(2)}), ` +
+    `con vulnerabilidad ${String(topPriority.hazardLevel).toLowerCase()} y pico termico de ${hottestCell.frequency.toFixed(
+      2
+    )}.`;
 }
 
 function renderRanking() {
@@ -523,4 +553,10 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function compactLabel(value, maxLength) {
+  const text = String(value ?? "").trim();
+  if (!text || text.length <= maxLength) return text || "--";
+  return `${text.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
 }
