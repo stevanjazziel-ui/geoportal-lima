@@ -764,7 +764,7 @@ textarea {
   }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1180px) {
   body {
     overflow: auto;
   }
@@ -778,8 +778,9 @@ textarea {
   }
 
   .hero {
-    grid-template-columns: 1fr;
-    padding: 18px;
+    grid-template-columns: minmax(0, 1.05fr) minmax(260px, 0.95fr);
+    gap: 14px;
+    padding: 16px 18px;
     margin-bottom: 14px;
   }
 
@@ -787,11 +788,8 @@ textarea {
     height: auto;
     min-height: 0;
     grid-template-columns: 1fr;
+    gap: 14px;
     overflow: visible;
-  }
-
-  .panel-right {
-    display: flex;
   }
 
   .panel {
@@ -800,28 +798,78 @@ textarea {
   }
 
   .map-stage {
-    min-height: 560px;
-    height: 560px;
+    min-height: 460px;
+    height: min(58vh, 620px);
     order: -1;
+  }
+}
+
+@media (max-width: 980px) {
+  .hero {
+    grid-template-columns: 1fr;
+    padding: 15px 16px;
+  }
+
+  .hero-side {
+    display: none;
+  }
+
+  .hero h1 {
+    max-width: none;
+    font-size: clamp(1.8rem, 4vw, 2.45rem);
+    line-height: 0.94;
+  }
+
+  .hero-text {
+    max-width: none;
+    margin-top: 4px;
+    font-size: 0.94rem;
+    line-height: 1.42;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+  }
+
+  .panel-right {
+    display: flex;
   }
 
   .metric-grid {
     grid-template-columns: 1fr 1fr;
   }
+
+  .map-stage {
+    min-height: 400px;
+    height: min(52vh, 540px);
+    border-radius: 28px;
+  }
 }
 
 @media (max-width: 640px) {
+  .app-shell {
+    padding: 12px;
+  }
+
+  .hero {
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.09em;
+  }
+
   .hero h1 {
     max-width: none;
-    font-size: 2.2rem;
+    font-size: 1.62rem;
+    line-height: 0.96;
   }
 
-  .hero-summary {
-    padding: 16px;
-  }
-
-  .hero-mini-grid {
-    grid-template-columns: 1fr;
+  .hero-text {
+    font-size: 0.88rem;
+    -webkit-line-clamp: 2;
   }
 
   .map-overlay.top-left,
@@ -840,7 +888,24 @@ textarea {
     width: 100%;
   }
 
+  .legend-card {
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .legend-group span {
+    margin-right: 8px;
+    margin-bottom: 6px;
+    font-size: 0.78rem;
+  }
+
   .metric-grid {
     grid-template-columns: 1fr;
+  }
+
+  .map-stage {
+    min-height: 320px;
+    height: min(46vh, 380px);
+    border-radius: 24px;
   }
 }
