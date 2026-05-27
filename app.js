@@ -72,9 +72,11 @@ const state = {
 };
 
 const dom = {};
+const FOCUS_OVERLAY_STORAGE_KEY = "geoportal-focus-overlay-visible";
 
 document.addEventListener("DOMContentLoaded", () => {
   cacheDom();
+  wireFocusOverlay();
   initMap();
   wireToggles();
   loadPreparedData();
@@ -96,6 +98,19 @@ function cacheDom() {
   dom.sourceList = document.getElementById("source-list");
   dom.focusTitle = document.getElementById("focus-title");
   dom.focusDescription = document.getElementById("focus-description");
+  dom.focusOverlay = document.getElementById("focus-overlay");
+  dom.showFocusOverlay = document.getElementById("show-focus-overlay");
+  dom.hideFocusOverlay = document.getElementById("hide-focus-overlay");
+}
+
+function wireFocusOverlay() {
+  if (!dom.focusOverlay || !dom.showFocusOverlay || !dom.hideFocusOverlay) return;
+
+  const storedPreference = readFocusOverlayPreference();
+  setFocusOverlayVisible(storedPreference === null ? false : storedPreference);
+
+  dom.showFocusOverlay.addEventListener("click", () => setFocusOverlayVisible(true));
+  dom.hideFocusOverlay.addEventListener("click", () => setFocusOverlayVisible(false));
 }
 
 function initMap() {
@@ -603,6 +618,31 @@ function setStatus(message, tone = "info") {
         : tone === "ok"
           ? "rgba(78, 156, 131, 0.12)"
           : "rgba(37, 107, 120, 0.08)";
+}
+
+function setFocusOverlayVisible(visible) {
+  if (!dom.focusOverlay) return;
+  dom.focusOverlay.classList.toggle("is-collapsed", !visible);
+  writeFocusOverlayPreference(visible);
+}
+
+function readFocusOverlayPreference() {
+  try {
+    const value = window.localStorage.getItem(FOCUS_OVERLAY_STORAGE_KEY);
+    if (value === "1") return true;
+    if (value === "0") return false;
+  } catch (error) {
+    console.warn("No se pudo leer la preferencia del panel de enfoque.", error);
+  }
+  return null;
+}
+
+function writeFocusOverlayPreference(visible) {
+  try {
+    window.localStorage.setItem(FOCUS_OVERLAY_STORAGE_KEY, visible ? "1" : "0");
+  } catch (error) {
+    console.warn("No se pudo guardar la preferencia del panel de enfoque.", error);
+  }
 }
 
 function escapeHtml(value) {

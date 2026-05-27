@@ -159,9 +159,15 @@
 
         <section class="map-stage">
           <div id="map"></div>
-          <div class="map-overlay top-left">
+          <div id="focus-overlay" class="map-overlay top-left is-collapsed">
+            <button id="show-focus-overlay" class="overlay-toggle overlay-toggle-show" type="button">
+              Mostrar enfoque
+            </button>
             <div class="overlay-card">
-              <p class="overlay-label">Enfoque del visor</p>
+              <div class="overlay-card-header">
+                <p class="overlay-label">Enfoque del visor</p>
+                <button id="hide-focus-overlay" class="overlay-dismiss" type="button">Ocultar</button>
+              </div>
               <strong id="focus-title">Lima y sus contrastes térmicos</strong>
               <p id="focus-description">
                 El panel resalta celdas regionales de calor y el índice constructivo calculado desde satélite.

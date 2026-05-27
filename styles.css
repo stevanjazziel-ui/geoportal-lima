@@ -296,6 +296,10 @@ textarea {
   pointer-events: none;
 }
 
+.map-overlay > * {
+  pointer-events: auto;
+}
+
 .map-overlay.top-left {
   top: 18px;
   left: 18px;
@@ -318,13 +322,61 @@ textarea {
   backdrop-filter: blur(14px);
 }
 
+.map-overlay.top-left.is-collapsed .overlay-card {
+  display: none;
+}
+
+.map-overlay.top-left:not(.is-collapsed) .overlay-toggle-show {
+  display: none;
+}
+
+.overlay-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
 .overlay-label {
-  margin: 0 0 6px;
+  margin: 0;
   color: #f5c79d;
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.74rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.overlay-toggle,
+.overlay-dismiss {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(20, 28, 28, 0.86);
+  color: #fff7ee;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.overlay-toggle {
+  padding: 10px 13px;
+  box-shadow: 0 12px 26px rgba(20, 28, 28, 0.2);
+}
+
+.overlay-dismiss {
+  padding: 8px 10px;
+  color: rgba(255, 247, 238, 0.9);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.overlay-toggle:hover,
+.overlay-dismiss:hover {
+  transform: translateY(-1px);
+  border-color: rgba(245, 199, 157, 0.55);
+  background: rgba(28, 39, 39, 0.94);
 }
 
 .overlay-card strong {
