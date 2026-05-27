@@ -251,16 +251,57 @@ function drawHeatStations() {
   state.stationLayer = L.layerGroup();
 
   state.data.stations.forEach((station) => {
-    const marker = L.circleMarker([station.lat, station.lon], {
-      radius: 4 + station.frequency * 5.2,
-      color: "#fff8ee",
-      weight: 2,
-      fillColor: getFrequencyColor(station.frequency),
-      fillOpacity: 0.98,
+    const latLng = [station.lat, station.lon];
+    const frequencyColor = getFrequencyColor(station.frequency);
+    const frequencyBand = getFrequencyBand(station.frequency);
+    const popupHtml = buildStationPopupHtml(station);
+
+    const buffer = L.circle(latLng, {
+      radius: getStationBufferRadiusMeters(station.frequency),
+      color: frequencyColor,
+      weight: 1.2 + station.frequency * 0.9,
+      opacity: 0.2 + station.frequency * 0.12,
+      fillColor: frequencyColor,
+      fillOpacity: 0.05 + station.frequency * 0.04,
+      dashArray: getStationDashArray(station.frequency),
+      className: `station-buffer station-${frequencyBand}`,
     });
-    marker.bindPopup(buildStationPopupHtml(station));
+
+    const halo = L.circleMarker(latLng, {
+      radius: 10 + station.frequency * 8,
+      color: frequencyColor,
+      weight: 1.4,
+      opacity: 0.55,
+      fillColor: frequencyColor,
+      fillOpacity: 0.08,
+      className: `station-halo station-${frequencyBand}`,
+    });
+
+    const marker = L.circleMarker(latLng, {
+      radius: 4.6 + station.frequency * 4.4,
+      color: "#fff8ee",
+      weight: 1.8,
+      fillColor: frequencyColor,
+      fillOpacity: 0.96,
+      className: `station-core station-${frequencyBand}`,
+    });
+
+    const nucleus = L.circleMarker(latLng, {
+      radius: 1.8 + station.frequency * 1.2,
+      color: "#163132",
+      weight: 0,
+      fillColor: "#fffaf2",
+      fillOpacity: 0.92,
+      interactive: false,
+      className: `station-nucleus station-${frequencyBand}`,
+    });
+
+    [buffer, halo, marker, nucleus].forEach((layer) => {
+      layer.bindPopup?.(popupHtml);
+      state.stationLayer.addLayer(layer);
+    });
+
     state.stationById.set(station.id, marker);
-    state.stationLayer.addLayer(marker);
   });
 
   state.stationLayer.addTo(state.map);
@@ -508,6 +549,24 @@ function getFrequencyColor(frequency) {
   if (frequency >= 0.9) return "#ea7b34";
   if (frequency >= 0.6) return "#efb43e";
   return "#3191c4";
+}
+
+function getFrequencyBand(frequency) {
+  if (frequency >= 1.2) return "extreme";
+  if (frequency >= 0.9) return "high";
+  if (frequency >= 0.6) return "medium";
+  return "low";
+}
+
+function getStationBufferRadiusMeters(frequency) {
+  return 6000 + frequency * 10000;
+}
+
+function getStationDashArray(frequency) {
+  if (frequency >= 1.2) return "2 10";
+  if (frequency >= 0.9) return "6 10";
+  if (frequency >= 0.6) return "10 9";
+  return "14 11";
 }
 
 function getHazardColor(level) {

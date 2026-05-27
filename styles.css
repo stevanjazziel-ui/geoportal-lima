@@ -360,6 +360,19 @@ textarea {
   flex: 0 0 auto;
 }
 
+.ring-swatch {
+  position: relative;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 247, 238, 0.95);
+  background: rgba(232, 123, 52, 0.2);
+  box-shadow:
+    0 0 0 4px rgba(232, 123, 52, 0.16),
+    0 0 0 8px rgba(232, 123, 52, 0.07);
+}
+
 .dot {
   width: 12px;
   height: 12px;
@@ -515,6 +528,55 @@ textarea {
 .leaflet-control-attribution {
   font-family: "IBM Plex Mono", monospace;
   font-size: 10px;
+}
+
+.leaflet-pane svg path.station-buffer,
+.leaflet-pane svg path.station-halo {
+  mix-blend-mode: screen;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.leaflet-pane svg path.station-buffer {
+  filter: drop-shadow(0 0 8px rgba(255, 248, 238, 0.18));
+}
+
+.leaflet-pane svg path.station-halo {
+  filter: drop-shadow(0 0 10px rgba(26, 35, 35, 0.18));
+}
+
+.leaflet-pane svg path.station-core {
+  filter: drop-shadow(0 0 10px rgba(19, 30, 30, 0.28));
+}
+
+.leaflet-pane svg path.station-nucleus {
+  filter: drop-shadow(0 0 6px rgba(255, 250, 242, 0.42));
+}
+
+.leaflet-pane svg path.station-low {
+  stroke-opacity: 0.26;
+}
+
+.leaflet-pane svg path.station-medium {
+  stroke-opacity: 0.34;
+}
+
+.leaflet-pane svg path.station-high {
+  stroke-opacity: 0.42;
+}
+
+.leaflet-pane svg path.station-extreme {
+  stroke-opacity: 0.52;
+}
+
+.leaflet-interactive.station-buffer:hover {
+  stroke-opacity: 0.72;
+  fill-opacity: 0.18;
+}
+
+.leaflet-interactive.station-halo:hover {
+  stroke-opacity: 0.75;
+  fill-opacity: 0.14;
 }
 
 .leaflet-popup-content-wrapper,
