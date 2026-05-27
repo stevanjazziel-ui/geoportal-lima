@@ -937,7 +937,8 @@ body {
   position: absolute;
   top: 14px;
   left: 14px;
-  right: 14px;
+  right: auto;
+  width: min(980px, calc(100vw - 28px));
   z-index: 820;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
@@ -1181,7 +1182,7 @@ body {
 }
 
 .map-overlay.top-left {
-  top: 108px;
+  top: 154px;
   left: 14px;
 }
 
@@ -1196,30 +1197,22 @@ body {
 }
 
 .leaflet-top.leaflet-right {
-  top: 110px;
+  top: 154px;
 }
 
 @media (max-width: 1180px) {
   .hero {
     top: 12px;
     left: 12px;
-    right: 12px;
+    right: auto;
+    width: min(760px, calc(100vw - 24px));
     grid-template-columns: 1fr;
     gap: 10px;
     padding: 10px 12px;
   }
 
   .hero-side {
-    justify-content: space-between;
-  }
-
-  .hero-summary {
-    min-width: 0;
-    flex: 1 1 320px;
-  }
-
-  .hero-badges {
-    max-width: none;
+    display: none;
   }
 
   .panel {
@@ -1229,7 +1222,7 @@ body {
 
   .map-overlay.top-left,
   .leaflet-top.leaflet-right {
-    top: 138px;
+    top: 142px;
   }
 
   .map-overlay.top-left,
@@ -1289,7 +1282,8 @@ body {
   .hero {
     top: 10px;
     left: 10px;
-    right: 10px;
+    right: auto;
+    width: calc(100vw - 20px);
     padding: 10px;
     border-radius: 18px;
   }
@@ -1333,7 +1327,7 @@ body {
 
   .map-overlay.top-left,
   .leaflet-top.leaflet-right {
-    top: 92px;
+    top: 124px;
   }
 
   .map-overlay.top-left,
