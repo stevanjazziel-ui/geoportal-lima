@@ -37,6 +37,14 @@
             y un índice constructivo calculado localmente desde imágenes satelitales.
             Los resultados ahora cubren toda la región Lima mediante una malla regional.
           </p>
+          <div class="hero-actions">
+            <button id="open-left-panel" class="hud-button" type="button" aria-expanded="false">
+              Capas y fuentes
+            </button>
+            <button id="open-right-panel" class="hud-button hud-button-primary" type="button" aria-expanded="false">
+              Ranking y estado
+            </button>
+          </div>
         </div>
         <div class="hero-side">
           <section class="hero-summary">
@@ -74,7 +82,15 @@
       </header>
 
       <main class="workspace">
+        <button id="panel-backdrop" class="panel-backdrop" type="button" aria-label="Cerrar paneles"></button>
         <aside class="panel panel-left">
+          <div class="panel-drawer-head">
+            <div>
+              <p class="panel-drawer-kicker">Capas y contexto</p>
+              <strong>Exploración territorial</strong>
+            </div>
+            <button id="close-left-panel" class="drawer-close" type="button">Cerrar</button>
+          </div>
           <section class="section-block">
             <div class="section-heading">
               <h2>Capas activas</h2>
@@ -204,6 +220,13 @@
         </section>
 
         <aside class="panel panel-right">
+          <div class="panel-drawer-head">
+            <div>
+              <p class="panel-drawer-kicker">Resumen y prioridad</p>
+              <strong>Lectura ejecutiva</strong>
+            </div>
+            <button id="close-right-panel" class="drawer-close" type="button">Cerrar</button>
+          </div>
           <section class="section-block">
             <div class="section-heading">
               <h2>Resumen ejecutivo</h2>

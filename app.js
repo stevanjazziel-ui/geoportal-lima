@@ -69,6 +69,7 @@ const state = {
   cellById: new Map(),
   stationById: new Map(),
   sortedByPriority: [],
+  activeDrawer: null,
 };
 
 const dom = {};
@@ -76,6 +77,7 @@ const FOCUS_OVERLAY_STORAGE_KEY = "geoportal-focus-overlay-visible";
 
 document.addEventListener("DOMContentLoaded", () => {
   cacheDom();
+  wirePanelDrawers();
   wireFocusOverlay();
   initMap();
   wireToggles();
@@ -84,6 +86,13 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function cacheDom() {
+  dom.panelLeft = document.querySelector(".panel-left");
+  dom.panelRight = document.querySelector(".panel-right");
+  dom.panelBackdrop = document.getElementById("panel-backdrop");
+  dom.openLeftPanel = document.getElementById("open-left-panel");
+  dom.openRightPanel = document.getElementById("open-right-panel");
+  dom.closeLeftPanel = document.getElementById("close-left-panel");
+  dom.closeRightPanel = document.getElementById("close-right-panel");
   dom.metricPoints = document.getElementById("metric-points");
   dom.metricRisk = document.getElementById("metric-risk");
   dom.metricPeak = document.getElementById("metric-peak");
@@ -102,6 +111,24 @@ function cacheDom() {
   dom.focusOverlay = document.getElementById("focus-overlay");
   dom.showFocusOverlay = document.getElementById("show-focus-overlay");
   dom.hideFocusOverlay = document.getElementById("hide-focus-overlay");
+}
+
+function wirePanelDrawers() {
+  if (!dom.panelLeft || !dom.panelRight || !dom.openLeftPanel || !dom.openRightPanel || !dom.panelBackdrop) return;
+
+  setActiveDrawer(null);
+
+  dom.openLeftPanel.addEventListener("click", () => toggleDrawer("left"));
+  dom.openRightPanel.addEventListener("click", () => toggleDrawer("right"));
+  dom.closeLeftPanel?.addEventListener("click", () => setActiveDrawer(null));
+  dom.closeRightPanel?.addEventListener("click", () => setActiveDrawer(null));
+  dom.panelBackdrop.addEventListener("click", () => setActiveDrawer(null));
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      setActiveDrawer(null);
+    }
+  });
 }
 
 function wireFocusOverlay() {
@@ -498,6 +525,7 @@ function focusCell(cellId) {
   const cell = state.data.cells.find((entry) => entry.id === cellId);
   const layer = state.cellById.get(cellId);
   if (!cell || !layer) return;
+  setActiveDrawer(null);
   state.map.flyTo([cell.lat, cell.lon], 10, { duration: 0.7 });
   layer.openPopup();
 }
@@ -629,6 +657,34 @@ function scheduleMapResize() {
   window.requestAnimationFrame(() => {
     state.map.invalidateSize(false);
   });
+}
+
+function toggleDrawer(side) {
+  setActiveDrawer(state.activeDrawer === side ? null : side);
+}
+
+function setActiveDrawer(side) {
+  state.activeDrawer = side;
+
+  const leftOpen = side === "left";
+  const rightOpen = side === "right";
+  const hasOpenDrawer = leftOpen || rightOpen;
+
+  dom.panelLeft?.classList.toggle("is-open", leftOpen);
+  dom.panelRight?.classList.toggle("is-open", rightOpen);
+  dom.panelBackdrop?.classList.toggle("is-visible", hasOpenDrawer);
+  dom.openLeftPanel?.classList.toggle("is-active", leftOpen);
+  dom.openRightPanel?.classList.toggle("is-active", rightOpen);
+
+  if (dom.openLeftPanel) {
+    dom.openLeftPanel.setAttribute("aria-expanded", String(leftOpen));
+  }
+
+  if (dom.openRightPanel) {
+    dom.openRightPanel.setAttribute("aria-expanded", String(rightOpen));
+  }
+
+  scheduleMapResize();
 }
 
 function setFocusOverlayVisible(visible) {
