@@ -49,19 +49,19 @@ textarea {
   height: 100vh;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 14px;
-  padding: 16px 20px 20px;
+  gap: 10px;
+  padding: 12px 16px 16px;
   overflow: hidden;
 }
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.34fr) minmax(420px, 0.66fr);
-  gap: 16px;
-  align-items: center;
-  padding: 18px 20px;
+  grid-template-columns: minmax(0, 1.75fr) minmax(360px, 0.8fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
   border: 1px solid var(--line);
-  border-radius: 28px;
+  border-radius: 24px;
   background:
     linear-gradient(125deg, rgba(255, 255, 255, 0.88), rgba(245, 232, 214, 0.82)),
     linear-gradient(90deg, rgba(201, 106, 47, 0.14), rgba(37, 107, 120, 0.09));
@@ -71,7 +71,7 @@ textarea {
 .hero-copy {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -79,40 +79,47 @@ textarea {
   margin: 0;
   color: var(--accent-deep);
   font-family: "IBM Plex Mono", monospace;
-  font-size: 0.76rem;
+  font-size: 0.71rem;
   font-weight: 500;
-  letter-spacing: 0.11em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .hero h1 {
   margin: 0;
-  max-width: 14ch;
-  font-size: clamp(1.9rem, 2.2vw, 3rem);
-  line-height: 0.92;
+  max-width: none;
+  font-size: clamp(1.55rem, 1.95vw, 2.3rem);
+  line-height: 0.95;
   text-wrap: balance;
 }
 
 .hero-text {
-  max-width: 60ch;
+  max-width: 72ch;
   margin: 2px 0 0;
   color: var(--muted);
-  font-size: 0.98rem;
-  line-height: 1.46;
+  font-size: 0.9rem;
+  line-height: 1.38;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .hero-side {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: flex-start;
   min-width: 0;
 }
 
 .hero-summary {
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: 8px;
+  padding: 10px 12px;
   border: 1px solid rgba(37, 107, 120, 0.12);
-  border-radius: 22px;
+  border-radius: 18px;
   background:
     radial-gradient(circle at top right, rgba(37, 107, 120, 0.1), transparent 32%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(244, 236, 225, 0.88));
@@ -122,20 +129,20 @@ textarea {
   margin: 0;
   color: var(--sea);
   font-family: "IBM Plex Mono", monospace;
-  font-size: 0.74rem;
+  font-size: 0.68rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .hero-mini-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .hero-mini {
-  padding: 10px 12px;
-  border-radius: 16px;
+  padding: 8px 10px;
+  border-radius: 14px;
   border: 1px solid rgba(62, 58, 51, 0.08);
   background: rgba(255, 255, 255, 0.72);
 }
@@ -143,28 +150,32 @@ textarea {
 .hero-mini-label {
   display: block;
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: 0.66rem;
   line-height: 1.2;
 }
 
 .hero-mini strong {
   display: block;
-  margin-top: 4px;
-  font-size: 0.96rem;
+  margin-top: 2px;
+  font-size: 0.84rem;
   line-height: 1.2;
 }
 
 .hero-summary-note {
   margin: 0;
   color: var(--muted);
-  font-size: 0.82rem;
-  line-height: 1.38;
+  font-size: 0.76rem;
+  line-height: 1.32;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .hero-badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   justify-content: flex-start;
   align-content: flex-start;
 }
@@ -172,19 +183,19 @@ textarea {
 .hero-badges span {
   display: inline-flex;
   align-items: center;
-  padding: 7px 11px;
+  padding: 6px 9px;
   border: 1px solid rgba(37, 107, 120, 0.16);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.75);
   color: var(--sea);
   font-family: "IBM Plex Mono", monospace;
-  font-size: 0.74rem;
+  font-size: 0.68rem;
 }
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(300px, 340px);
-  gap: 16px;
+  grid-template-columns: minmax(220px, 250px) minmax(0, 1fr) minmax(250px, 290px);
+  gap: 12px;
   min-height: 0;
   height: 100%;
   overflow: hidden;
@@ -193,7 +204,7 @@ textarea {
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -224,12 +235,12 @@ textarea {
   border-radius: 24px;
   background: var(--panel);
   box-shadow: var(--shadow);
-  padding: 20px;
+  padding: 16px;
   backdrop-filter: blur(14px);
 }
 
 .section-block.compact {
-  padding: 18px;
+  padding: 14px;
 }
 
 .section-heading h2 {
@@ -313,7 +324,7 @@ textarea {
   min-height: 0;
   height: 100%;
   border: 1px solid var(--line);
-  border-radius: 32px;
+  border-radius: 28px;
   overflow: hidden;
   box-shadow: var(--shadow);
 }
@@ -759,8 +770,8 @@ textarea {
 
 @media (max-width: 1380px) {
   .workspace {
-    grid-template-columns: minmax(250px, 280px) minmax(0, 1fr) minmax(280px, 320px);
-    gap: 14px;
+    grid-template-columns: minmax(210px, 235px) minmax(0, 1fr) minmax(235px, 270px);
+    gap: 10px;
   }
 }
 
@@ -773,15 +784,15 @@ textarea {
     height: auto;
     min-height: 100vh;
     display: block;
-    padding: 16px;
+    padding: 14px;
     overflow: visible;
   }
 
   .hero {
     grid-template-columns: minmax(0, 1.05fr) minmax(260px, 0.95fr);
-    gap: 12px;
-    padding: 14px 16px;
-    margin-bottom: 12px;
+    gap: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
   }
 
   .workspace {
@@ -798,8 +809,8 @@ textarea {
   }
 
   .map-stage {
-    min-height: 420px;
-    height: min(54vh, 560px);
+    min-height: 460px;
+    height: min(62vh, 640px);
     order: -1;
   }
 }
@@ -822,13 +833,9 @@ textarea {
 
   .hero-text {
     max-width: none;
-    margin-top: 4px;
-    font-size: 0.94rem;
-    line-height: 1.42;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
+    margin-top: 2px;
+    font-size: 0.9rem;
+    line-height: 1.34;
   }
 
   .panel-right {
@@ -840,8 +847,8 @@ textarea {
   }
 
   .map-stage {
-    min-height: 360px;
-    height: min(48vh, 500px);
+    min-height: 460px;
+    height: min(58vh, 620px);
     border-radius: 28px;
   }
 }
@@ -863,13 +870,12 @@ textarea {
 
   .hero h1 {
     max-width: none;
-    font-size: 1.62rem;
-    line-height: 0.96;
+    font-size: 1.44rem;
+    line-height: 0.98;
   }
 
   .hero-text {
-    font-size: 0.88rem;
-    -webkit-line-clamp: 2;
+    display: none;
   }
 
   .map-overlay.top-left,
@@ -904,8 +910,8 @@ textarea {
   }
 
   .map-stage {
-    min-height: 320px;
-    height: min(46vh, 380px);
+    min-height: 400px;
+    height: min(54vh, 470px);
     border-radius: 24px;
   }
 }
