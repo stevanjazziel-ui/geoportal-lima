@@ -1093,7 +1093,7 @@ body {
   z-index: 730;
   border: 0;
   padding: 0;
-  background: rgba(17, 25, 25, 0.26);
+  background: transparent;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -1101,9 +1101,9 @@ body {
 }
 
 .panel-backdrop.is-visible {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .panel {

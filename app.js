@@ -114,7 +114,7 @@ function cacheDom() {
 }
 
 function wirePanelDrawers() {
-  if (!dom.panelLeft || !dom.panelRight || !dom.openLeftPanel || !dom.openRightPanel || !dom.panelBackdrop) return;
+  if (!dom.panelLeft || !dom.panelRight || !dom.openLeftPanel || !dom.openRightPanel) return;
 
   setActiveDrawer(null);
 
@@ -122,7 +122,6 @@ function wirePanelDrawers() {
   dom.openRightPanel.addEventListener("click", () => toggleDrawer("right"));
   dom.closeLeftPanel?.addEventListener("click", () => setActiveDrawer(null));
   dom.closeRightPanel?.addEventListener("click", () => setActiveDrawer(null));
-  dom.panelBackdrop.addEventListener("click", () => setActiveDrawer(null));
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
@@ -525,7 +524,6 @@ function focusCell(cellId) {
   const cell = state.data.cells.find((entry) => entry.id === cellId);
   const layer = state.cellById.get(cellId);
   if (!cell || !layer) return;
-  setActiveDrawer(null);
   state.map.flyTo([cell.lat, cell.lon], 10, { duration: 0.7 });
   layer.openPopup();
 }
