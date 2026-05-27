@@ -27,10 +27,12 @@ jobs:
 
       - name: Prepare static bundle
         run: |
+          BUILD_VERSION="$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::7}"
           mkdir -p _site/data/satellite_samples
           cp index.html app.js styles.css _site/
           cp data/lima_analysis_data.js data/lima_mountain_zones.js _site/data/
           cp -R data/satellite_samples/. _site/data/satellite_samples/
+          sed -i "s/__BUILD_VERSION__/${BUILD_VERSION}/g" _site/index.html
           touch _site/.nojekyll
 
       - name: Configure GitHub Pages
