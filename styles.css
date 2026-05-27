@@ -22,6 +22,7 @@
 html,
 body {
   margin: 0;
+  height: 100%;
   min-height: 100%;
   background:
     radial-gradient(circle at top left, rgba(201, 106, 47, 0.18), transparent 28%),
@@ -29,6 +30,10 @@ body {
     linear-gradient(180deg, #fbf6ee 0%, #efe6d8 100%);
   color: var(--ink);
   font-family: "Sora", sans-serif;
+}
+
+body {
+  overflow: hidden;
 }
 
 button,
@@ -41,7 +46,12 @@ textarea {
 .app-shell {
   max-width: 1800px;
   margin: 0 auto;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
   padding: 16px 20px 20px;
+  overflow: hidden;
 }
 
 .hero {
@@ -49,7 +59,6 @@ textarea {
   grid-template-columns: minmax(0, 1.34fr) minmax(420px, 0.66fr);
   gap: 16px;
   align-items: center;
-  margin-bottom: 14px;
   padding: 18px 20px;
   border: 1px solid var(--line);
   border-radius: 28px;
@@ -174,15 +183,40 @@ textarea {
 
 .workspace {
   display: grid;
-  grid-template-columns: 330px minmax(0, 1fr) 360px;
-  gap: 20px;
-  min-height: calc(100vh - 170px);
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(300px, 340px);
+  gap: 16px;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+}
+
+.panel::-webkit-scrollbar {
+  width: 10px;
+}
+
+.panel::-webkit-scrollbar-track {
+  background: rgba(95, 106, 103, 0.08);
+  border-radius: 999px;
+}
+
+.panel::-webkit-scrollbar-thumb {
+  background: rgba(37, 107, 120, 0.28);
+  border-radius: 999px;
+}
+
+.panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 107, 120, 0.42);
 }
 
 .section-block {
@@ -276,7 +310,8 @@ textarea {
 
 .map-stage {
   position: relative;
-  min-height: 760px;
+  min-height: 0;
+  height: 100%;
   border: 1px solid var(--line);
   border-radius: 32px;
   overflow: hidden;
@@ -724,37 +759,49 @@ textarea {
 
 @media (max-width: 1380px) {
   .workspace {
-    grid-template-columns: 310px minmax(0, 1fr);
-  }
-
-  .panel-right {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
+    grid-template-columns: minmax(250px, 280px) minmax(0, 1fr) minmax(280px, 320px);
+    gap: 14px;
   }
 }
 
 @media (max-width: 980px) {
+  body {
+    overflow: auto;
+  }
+
   .app-shell {
+    height: auto;
+    min-height: 100vh;
+    display: block;
     padding: 16px;
+    overflow: visible;
   }
 
   .hero {
     grid-template-columns: 1fr;
     padding: 18px;
+    margin-bottom: 14px;
   }
 
   .workspace {
+    height: auto;
+    min-height: 0;
     grid-template-columns: 1fr;
+    overflow: visible;
   }
 
   .panel-right {
-    grid-template-columns: 1fr;
+    display: flex;
+  }
+
+  .panel {
+    overflow: visible;
+    padding-right: 0;
   }
 
   .map-stage {
     min-height: 560px;
+    height: 560px;
     order: -1;
   }
 

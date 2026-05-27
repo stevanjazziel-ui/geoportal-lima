@@ -80,6 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initMap();
   wireToggles();
   loadPreparedData();
+  window.addEventListener("resize", scheduleMapResize);
 });
 
 function cacheDom() {
@@ -152,6 +153,7 @@ function initMap() {
     .addTo(state.map);
 
   state.map.fitBounds(LIMA_BOUNDS, { padding: [18, 18] });
+  scheduleMapResize();
 }
 
 function wireToggles() {
@@ -201,6 +203,7 @@ function loadPreparedData() {
   updateHeroSummary();
   renderRanking();
   updateFocusCard();
+  scheduleMapResize();
   setStatus(
     `Resultados listos. Se analizaron ${prepared.cells.length} celdas sobre toda la region Lima y ${prepared.stations.length} estaciones base de SENAMHI.`,
     "ok"
@@ -393,6 +396,7 @@ function toggleLeafletLayer(layer, visible) {
   } else {
     state.map.removeLayer(layer);
   }
+  scheduleMapResize();
 }
 
 function updateMetrics() {
@@ -618,6 +622,13 @@ function setStatus(message, tone = "info") {
         : tone === "ok"
           ? "rgba(78, 156, 131, 0.12)"
           : "rgba(37, 107, 120, 0.08)";
+}
+
+function scheduleMapResize() {
+  if (!state.map) return;
+  window.requestAnimationFrame(() => {
+    state.map.invalidateSize(false);
+  });
 }
 
 function setFocusOverlayVisible(visible) {
