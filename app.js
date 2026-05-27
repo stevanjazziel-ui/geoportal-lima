@@ -97,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
   cacheDom();
   wirePanelDrawers();
   wireFocusOverlay();
+  wireRiskWindow();
   initMap();
   wireBaseMapSwitcher();
   wireToggles();
@@ -132,6 +133,13 @@ function cacheDom() {
   dom.focusOverlay = document.getElementById("focus-overlay");
   dom.showFocusOverlay = document.getElementById("show-focus-overlay");
   dom.hideFocusOverlay = document.getElementById("hide-focus-overlay");
+  dom.riskWindow = document.getElementById("risk-window");
+  dom.riskWindowCard = document.getElementById("risk-window-card");
+  dom.riskWindowTitle = document.getElementById("risk-window-title");
+  dom.riskWindowSummary = document.getElementById("risk-window-summary");
+  dom.riskWindowMetrics = document.getElementById("risk-window-metrics");
+  dom.riskWindowSolution = document.getElementById("risk-window-solution");
+  dom.hideRiskWindow = document.getElementById("hide-risk-window");
 }
 
 function wirePanelDrawers() {
@@ -159,6 +167,10 @@ function wireFocusOverlay() {
 
   dom.showFocusOverlay.addEventListener("click", () => setFocusOverlayVisible(true));
   dom.hideFocusOverlay.addEventListener("click", () => setFocusOverlayVisible(false));
+}
+
+function wireRiskWindow() {
+  dom.hideRiskWindow?.addEventListener("click", hideRiskWindow);
 }
 
 function initMap() {
@@ -308,6 +320,7 @@ function drawRegionalCells() {
     onEachFeature(feature, layerRef) {
       const cell = feature.properties;
       layerRef.bindPopup(buildCellPopupHtml(cell));
+      layerRef.on("click", () => showRiskWindowForCell(cell));
       state.cellById.set(cell.id, layerRef);
     },
   });
@@ -389,6 +402,7 @@ function drawRankingPins() {
       }),
     });
     marker.bindPopup(buildCellPopupHtml(cell));
+    marker.on("click", () => showRiskWindowForCell(cell));
     state.rankingPinsLayer.addLayer(marker);
   });
 
@@ -420,6 +434,7 @@ function drawMountainCells() {
     onEachFeature(feature, layerRef) {
       const cell = feature.properties;
       layerRef.bindPopup(buildCellPopupHtml(cell));
+      layerRef.on("click", () => showRiskWindowForCell(cell));
     },
   });
 }
@@ -571,7 +586,176 @@ function focusCell(cellId) {
   const layer = state.cellById.get(cellId);
   if (!cell || !layer) return;
   state.map.flyTo([cell.lat, cell.lon], 10, { duration: 0.7 });
+  showRiskWindowForCell(cell);
   layer.openPopup();
+}
+
+function showRiskWindowForCell(cell) {
+  if (!cell || !dom.riskWindow || !dom.riskWindowCard) return;
+
+  const integratedRisk = getIntegratedRiskScore(cell);
+  const hazardRank = getHazardRank(cell.hazardLevel);
+  const builtUpRatio = getBuiltUpRatio(cell);
+  const ndbiMean = getNdbiMean(cell);
+  const tone = getRiskTone(integratedRisk);
+  const mountainContext = hasMountainContext(cell)
+    ? "Tambien presenta condicion serrana o de loma, lo que vuelve mas delicada la expansion y la respuesta termica."
+    : "No muestra una condicion serrana dominante dentro de la celda.";
+
+  dom.riskWindowCard.dataset.tone = tone;
+  dom.riskWindow.classList.remove("is-hidden");
+  dom.riskWindowTitle.textContent = cell.name;
+  dom.riskWindowSummary.textContent =
+    `${cell.name} registra un riesgo integrado de ${integratedRisk}/100, con vulnerabilidad ${hazardRank}/4 ` +
+    `(${cell.hazardLevel}), calor ${cell.frequency.toFixed(2)} e indice constructivo ${cell.constructionIndex.toFixed(
+      2
+    )}. ${mountainContext}`;
+  dom.riskWindowSolution.textContent = buildRiskRecommendation(cell, {
+    integratedRisk,
+    hazardRank,
+    builtUpRatio,
+  });
+  dom.riskWindowMetrics.innerHTML = buildRiskMetricsHtml(cell, {
+    integratedRisk,
+    hazardRank,
+    builtUpRatio,
+    ndbiMean,
+  });
+}
+
+function hideRiskWindow() {
+  dom.riskWindow?.classList.add("is-hidden");
+}
+
+function buildRiskMetricsHtml(cell, metrics) {
+  const metricCards = [
+    {
+      label: "Riesgo integrado",
+      value: `${metrics.integratedRisk}/100`,
+      detail: `Prioridad ${cell.priorityScore.toFixed(2)}`,
+    },
+    {
+      label: "Vulnerabilidad",
+      value: `${metrics.hazardRank}/4`,
+      detail: String(cell.hazardLevel || "Sin dato"),
+    },
+    {
+      label: "Calor",
+      value: cell.frequency.toFixed(2),
+      detail: String(cell.heatLabel || "Sin dato"),
+    },
+    {
+      label: "Construccion NDBI",
+      value: cell.constructionIndex.toFixed(2),
+      detail: String(cell.constructionLabel || "Sin dato"),
+    },
+    {
+      label: "Cobertura edificada",
+      value: `${Math.round(metrics.builtUpRatio * 100)}%`,
+      detail: `NDBI medio ${metrics.ndbiMean.toFixed(2)}`,
+    },
+    {
+      label: "Estacion base",
+      value: String(cell.nearestStation || "--"),
+      detail: `${Number(cell.nearestStationDistanceKm || 0).toFixed(1)} km`,
+    },
+  ];
+
+  return metricCards
+    .map(
+      (entry) => `
+        <article class="risk-metric">
+          <span class="risk-metric-label">${escapeHtml(entry.label)}</span>
+          <strong class="risk-metric-value">${escapeHtml(entry.value)}</strong>
+          <span class="risk-metric-detail">${escapeHtml(entry.detail)}</span>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function getIntegratedRiskScore(cell) {
+  return Math.max(0, Math.min(100, Math.round(Number(cell.priorityScore || 0) * 100)));
+}
+
+function getHazardRank(level) {
+  return HAZARD_ORDER[level] || 0;
+}
+
+function getBuiltUpRatio(cell) {
+  return Math.max(0, Math.min(1, Number(cell?.satelliteMetrics?.builtUpRatio ?? cell?.constructionIndex ?? 0)));
+}
+
+function getNdbiMean(cell) {
+  return Number(cell?.satelliteMetrics?.ndbiMean ?? 0);
+}
+
+function hasMountainContext(cell) {
+  return Boolean(cell?.mountainZone || (Array.isArray(cell?.mountainContext) && cell.mountainContext.length));
+}
+
+function getRiskTone(score) {
+  if (score >= 75) return "critical";
+  if (score >= 55) return "high";
+  if (score >= 35) return "medium";
+  return "low";
+}
+
+function buildRiskRecommendation(cell, metrics) {
+  const highHeat = Number(cell.frequency || 0) >= 0.9;
+  const veryHighHeat = Number(cell.frequency || 0) >= 1.1;
+  const highConstruction = Number(cell.constructionIndex || 0) >= 0.52;
+  const denseConstruction = Number(cell.constructionIndex || 0) >= 0.72;
+  const highHazard = metrics.hazardRank >= 3;
+  const veryHighHazard = metrics.hazardRank >= 4;
+  const mountain = hasMountainContext(cell);
+  const stationDistance = Number(cell.nearestStationDistanceKm || 0);
+
+  let mainAction =
+    "Mantener seguimiento de la celda y guiar nuevas obras con sombra, vegetacion y materiales de baja absorcion termica.";
+
+  if (veryHighHazard && highHeat && highConstruction) {
+    mainAction =
+      "Priorizar enfriamiento urbano inmediato: arborizacion de calles, sombra continua, techos frios y retiro progresivo de superficies impermeables en vias y equipamientos.";
+  } else if (highHazard && mountain) {
+    mainAction =
+      "Contener la expansion en ladera o loma, reforzar drenaje y estabilidad del suelo, y ubicar sombra y espacios publicos frescos en los nucleos mas expuestos.";
+  } else if (highHeat && !highConstruction) {
+    mainAction =
+      "Conservar suelo abierto y cobertura natural, evitar nuevo asfalto innecesario y sumar parques de bolsillo o franjas verdes antes de consolidar nueva edificacion.";
+  } else if (highConstruction || denseConstruction) {
+    mainAction =
+      "Aplicar reconversion termica del tejido construido con techos frios, pavimentos permeables, arbolado vial y regulacion de patios duros o cubiertas reflectantes.";
+  } else if (metrics.integratedRisk >= 55 || veryHighHeat) {
+    mainAction =
+      "Intervenir primero equipamientos sensibles, ejes peatonales y plazas con sombra, agua y materiales mas reflectivos para bajar exposicion termica.";
+  }
+
+  const supportNotes = [];
+
+  if (metrics.builtUpRatio >= 0.45) {
+    supportNotes.push(
+      `La cobertura edificada estimada ya alcanza ${Math.round(metrics.builtUpRatio * 100)}%, por lo que conviene limitar mayor sellado del suelo`
+    );
+  }
+
+  if (stationDistance >= 18) {
+    supportNotes.push(
+      `la estacion de apoyo queda a ${stationDistance.toFixed(1)} km y vale complementar con verificacion local`
+    );
+  }
+
+  if (highHazard && !mountain) {
+    supportNotes.push("la prioridad debe concentrarse en sombra peatonal, arbolado barrial y enfriamiento de cubiertas");
+  }
+
+  return supportNotes.length ? `${mainAction} ${capitalizeSentence(supportNotes.join("; "))}.` : mainAction;
+}
+
+function capitalizeSentence(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function buildCellPopupHtml(cell) {

@@ -351,6 +351,12 @@ textarea {
   left: 18px;
 }
 
+.map-overlay.top-right {
+  top: 18px;
+  right: 18px;
+  justify-content: flex-end;
+}
+
 .map-overlay.bottom-left {
   left: 18px;
   bottom: 18px;
@@ -371,6 +377,56 @@ textarea {
   color: #fff7ee;
   box-shadow: 0 12px 34px rgba(20, 28, 28, 0.24);
   backdrop-filter: blur(14px);
+}
+
+.risk-window.is-hidden {
+  display: none;
+}
+
+.risk-card {
+  width: min(380px, calc(100vw - 28px));
+  max-height: min(62vh, 560px);
+  overflow-y: auto;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-top: 4px solid rgba(147, 167, 160, 0.95);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 28%),
+    rgba(18, 27, 27, 0.86);
+  color: #fff7ee;
+  box-shadow: 0 16px 36px rgba(20, 28, 28, 0.28);
+  backdrop-filter: blur(16px);
+}
+
+.risk-card[data-tone="low"] {
+  border-top-color: rgba(99, 174, 139, 0.96);
+}
+
+.risk-card[data-tone="medium"] {
+  border-top-color: rgba(235, 196, 69, 0.96);
+}
+
+.risk-card[data-tone="high"] {
+  border-top-color: rgba(232, 127, 47, 0.96);
+}
+
+.risk-card[data-tone="critical"] {
+  border-top-color: rgba(202, 61, 47, 0.98);
+}
+
+.risk-card::-webkit-scrollbar {
+  width: 8px;
+}
+
+.risk-card::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.risk-card::-webkit-scrollbar-thumb {
+  background: rgba(255, 247, 238, 0.24);
+  border-radius: 999px;
 }
 
 .basemap-switcher {
@@ -427,6 +483,13 @@ textarea {
   margin-bottom: 6px;
 }
 
+.risk-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .overlay-label {
   margin: 0;
   color: #f5c79d;
@@ -473,10 +536,68 @@ textarea {
   margin-bottom: 6px;
 }
 
+.risk-card strong {
+  display: block;
+}
+
 .overlay-card p:last-child {
   margin: 0;
   color: rgba(255, 247, 238, 0.82);
   line-height: 1.45;
+}
+
+.risk-summary,
+.risk-card-text {
+  margin: 0;
+  color: rgba(255, 247, 238, 0.86);
+  font-size: 0.88rem;
+  line-height: 1.52;
+}
+
+.risk-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.risk-metric {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.risk-metric-label,
+.risk-card-label {
+  color: #f5c79d;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.69rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.risk-metric-value {
+  font-size: 1.12rem;
+  line-height: 1.05;
+}
+
+.risk-metric-detail {
+  color: rgba(255, 247, 238, 0.72);
+  font-size: 0.74rem;
+  line-height: 1.3;
+}
+
+.risk-card-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.risk-card-label {
+  margin: 0 0 8px;
 }
 
 .legend-card h3 {
@@ -1231,6 +1352,11 @@ body {
   left: 14px;
 }
 
+.map-overlay.top-right {
+  top: 136px;
+  right: 14px;
+}
+
 .map-overlay.bottom-left {
   left: 14px;
   bottom: 14px;
@@ -1272,6 +1398,11 @@ body {
   .map-overlay.top-left,
   .leaflet-top.leaflet-right {
     top: 136px;
+  }
+
+  .map-overlay.top-right {
+    top: 136px;
+    right: 12px;
   }
 
   .map-overlay.top-left,
@@ -1336,6 +1467,11 @@ body {
     top: 126px;
   }
 
+  .map-overlay.top-right {
+    top: 126px;
+    right: 12px;
+  }
+
   .map-overlay.bottom-right {
     right: 12px;
     bottom: 12px;
@@ -1394,6 +1530,12 @@ body {
     top: 124px;
   }
 
+  .map-overlay.top-right {
+    top: 124px;
+    left: 10px;
+    right: 10px;
+  }
+
   .map-overlay.top-left,
   .map-overlay.bottom-left {
     left: 10px;
@@ -1411,9 +1553,15 @@ body {
   }
 
   .overlay-card,
-  .legend-card {
+  .legend-card,
+  .risk-card {
     width: 100%;
     max-width: none;
+  }
+
+  .risk-card {
+    max-height: min(42vh, 360px);
+    padding: 14px;
   }
 
   .basemap-switcher {

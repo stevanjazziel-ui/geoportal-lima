@@ -191,6 +191,29 @@
               </p>
             </div>
           </div>
+          <div id="risk-window" class="map-overlay top-right risk-window is-hidden">
+            <article id="risk-window-card" class="risk-card" data-tone="neutral">
+              <div class="risk-card-header">
+                <div>
+                  <p class="overlay-label">Riesgo del sector</p>
+                  <strong id="risk-window-title">Selecciona un sector analizado</strong>
+                </div>
+                <button id="hide-risk-window" class="overlay-dismiss" type="button">Cerrar</button>
+              </div>
+              <p id="risk-window-summary" class="risk-summary">
+                Haz clic sobre una celda o sobre el ranking para ver el riesgo integrado, sus numeros base y una
+                propuesta de respuesta urbanistica.
+              </p>
+              <div id="risk-window-metrics" class="risk-metric-grid"></div>
+              <div class="risk-card-section">
+                <p class="risk-card-label">Propuesta de respuesta</p>
+                <p id="risk-window-solution" class="risk-card-text">
+                  La recomendacion se generara automaticamente segun calor, vulnerabilidad, ocupacion construida y
+                  contexto territorial.
+                </p>
+              </div>
+            </article>
+          </div>
           <div class="map-overlay bottom-left">
             <div class="legend-card">
               <h3>Leyenda rápida</h3>
