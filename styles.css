@@ -1139,6 +1139,11 @@ body {
   transform: translateX(0);
 }
 
+.panel-left.is-open,
+.panel-right.is-open {
+  transform: translateX(0);
+}
+
 .panel-drawer-head {
   position: sticky;
   top: 0;
@@ -1265,6 +1270,11 @@ body {
   }
 
   .panel.is-open {
+    transform: translateY(0);
+  }
+
+  .panel-left.is-open,
+  .panel-right.is-open {
     transform: translateY(0);
   }
 
