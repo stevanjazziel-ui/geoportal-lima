@@ -44,7 +44,11 @@ const SOURCES = [
     url: "https://www.idep.gob.pe/geoportal/rest/services/DATOS_GEOESPACIALES/L%C3%8DMITES/FeatureServer/3/query?where=NOMBDEP%3D%27LIMA%27&outFields=*&returnGeometry=true&f=geojson",
   },
   {
-    label: "Esri World Imagery · base satelital usada para el indice local",
+    label: "Sentinel-2 ImageServer · fuente multiespectral usada para NDBI",
+    url: "https://sentinel.arcgis.com/arcgis/rest/services/Sentinel2/ImageServer",
+  },
+  {
+    label: "Esri World Imagery · mapa base visual del visor",
     url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
   },
 ];
@@ -240,7 +244,7 @@ function loadPreparedData() {
   );
 
   dom.iclStatus.textContent =
-    "Las capas del ICL quedan como apoyo. El indice principal ya fue calculado localmente para toda la region Lima con malla satelital.";
+    "Las capas del ICL quedan como apoyo. El indice principal ya fue calculado localmente para toda la region Lima con NDBI de Sentinel-2.";
 }
 
 function drawRegionBoundary() {
@@ -576,9 +580,9 @@ function buildCellPopupHtml(cell) {
         <span><strong>Estacion mas cercana:</strong> ${escapeHtml(cell.nearestStation)} (${cell.nearestStationDistanceKm.toFixed(
           1
         )} km)</span>
-        <span><strong>Metrica satelital:</strong> impermeable ${cell.satelliteMetrics.imperviousRatio.toFixed(
+        <span><strong>Metrica NDBI:</strong> media ${cell.satelliteMetrics.ndbiMean.toFixed(
           2
-        )}, bordes ${cell.satelliteMetrics.edgeRatio.toFixed(2)}</span>
+        )}, cobertura construida ${cell.satelliteMetrics.builtUpRatio.toFixed(2)}</span>
       </div>
     </div>
   `;
@@ -609,6 +613,9 @@ function buildStationPopupHtml(station) {
         <span><strong>Clase climatica:</strong> ${escapeHtml(station.climateDescription)}</span>
         <span><strong>Contexto de montana:</strong> ${escapeHtml(mountainText)}</span>
         <span><strong>Eventos de calor:</strong> ${station.eventCount} en ${station.summerDays} dias observados</span>
+        <span><strong>Metrica NDBI:</strong> media ${station.satelliteMetrics.ndbiMean.toFixed(
+          2
+        )}, cobertura construida ${station.satelliteMetrics.builtUpRatio.toFixed(2)}</span>
       </div>
     </div>
   `;

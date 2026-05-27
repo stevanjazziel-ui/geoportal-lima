@@ -34,7 +34,7 @@
           <h1>Geoportal térmico-urbanístico para toda la región Lima</h1>
           <p class="hero-text">
             Cruza estaciones de calor de SENAMHI con vulnerabilidad climática futura
-            y un índice constructivo calculado localmente desde imágenes satelitales.
+            y un índice constructivo calculado localmente con NDBI de Sentinel-2.
             Los resultados ahora cubren toda la región Lima mediante una malla regional.
           </p>
           <div class="hero-actions">
@@ -108,7 +108,7 @@
                 <input type="checkbox" id="toggle-hazard" checked>
                 <span class="toggle-main">
                   <strong>Malla regional de análisis</strong>
-                  <small>Celdas de toda la región Lima calculadas localmente sobre satélite</small>
+                  <small>Celdas de toda la región Lima calculadas localmente con NDBI de Sentinel-2</small>
                 </span>
               </label>
               <label class="toggle-card">
@@ -131,7 +131,7 @@
           <section class="section-block">
             <div class="section-heading">
               <h2>Capas urbanas ICL</h2>
-              <p>Capas opcionales de apoyo. El índice principal ya sale del satélite.</p>
+              <p>Capas opcionales de apoyo. El índice principal ya sale de Sentinel-2.</p>
             </div>
             <div class="toggle-list">
               <label class="toggle-card optional">
@@ -166,8 +166,9 @@
               <h2>Notas de lectura</h2>
             </div>
             <ul class="notes-list">
-              <li>El índice constructivo usa muestras satelitales locales sobre una malla regional.</li>
+              <li>El índice constructivo usa NDBI de Sentinel-2 sobre una malla regional.</li>
               <li>La prioridad combina calor interpolado, vulnerabilidad térmica y ocupación construida.</li>
+              <li>Vegetación y agua se limpian con máscaras espectrales para no inflar el construido.</li>
               <li>La capa de montaña sigue siendo contexto territorial, no reemplaza un DEM o pendiente.</li>
             </ul>
           </section>
@@ -186,7 +187,7 @@
               </div>
               <strong id="focus-title">Lima y sus contrastes térmicos</strong>
               <p id="focus-description">
-                El panel resalta celdas regionales de calor y el índice constructivo calculado desde satélite.
+                El panel resalta celdas regionales de calor y el índice constructivo calculado con NDBI.
               </p>
             </div>
           </div>
@@ -209,7 +210,7 @@
                 <span><i class="swatch hazard-extreme"></i> Muy alto</span>
               </div>
               <div class="legend-group">
-                <p>Índice constructivo satelital</p>
+                <p>Índice constructivo NDBI</p>
                 <span><i class="swatch build-low"></i> Bajo</span>
                 <span><i class="swatch build-medium"></i> Medio</span>
                 <span><i class="swatch build-high"></i> Alto</span>

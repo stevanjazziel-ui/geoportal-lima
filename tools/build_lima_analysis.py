@@ -17,9 +17,8 @@ OUTPUT_JS = DATA_DIR / "lima_analysis_data.js"
 MOUNTAIN_JS = DATA_DIR / "lima_mountain_zones.js"
 BOUNDARY_CACHE = DATA_DIR / "ign_lima_region_boundary.geojson"
 
-WORLD_IMAGERY_EXPORT = (
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export"
-)
+SENTINEL2_IMAGE_SERVER = "https://sentinel.arcgis.com/arcgis/rest/services/Sentinel2/ImageServer"
+SENTINEL2_EXPORT = f"{SENTINEL2_IMAGE_SERVER}/exportImage"
 LIMA_BOUNDARY_URL = (
     "https://www.idep.gob.pe/geoportal/rest/services/"
     "DATOS_GEOESPACIALES/L%C3%8DMITES/FeatureServer/3/query"
@@ -35,6 +34,11 @@ GRID_SPACING_KM = 16.0
 IMAGE_SIZE = 224
 ANALYSIS_RADIUS_KM = 0.65
 WORKERS = 4
+
+SENTINEL_NATURAL_COLOR = {"rasterFunction": "Natural Color with DRA"}
+SENTINEL_NDBI = {"rasterFunction": "Normalized Difference Built-Up Index (NDBI)"}
+SENTINEL_NDVI = {"rasterFunction": "NDVI Raw"}
+SENTINEL_NDWI = {"rasterFunction": "NDWI Raw"}
 
 HAZARD_SCORE = {
     "Bajo": 0.25,
@@ -226,45 +230,102 @@ def imagery_bbox(lon, lat, radius_km=ANALYSIS_RADIUS_KM):
     )
 
 
-def imagery_export_url(lon, lat, radius_km=ANALYSIS_RADIUS_KM, size=IMAGE_SIZE):
+def imagery_export_url(
+    lon,
+    lat,
+    radius_km=ANALYSIS_RADIUS_KM,
+    size=IMAGE_SIZE,
+    image_format="png32",
+    pixel_type=None,
+    rendering_rule=None,
+):
     bbox = imagery_bbox(lon, lat, radius_km=radius_km)
     params = {
         "bbox": ",".join(f"{value:.8f}" for value in bbox),
         "bboxSR": "4326",
         "imageSR": "4326",
         "size": f"{size},{size}",
-        "format": "png32",
+        "format": image_format,
         "transparent": "false",
         "f": "image",
     }
-    return f"{WORLD_IMAGERY_EXPORT}?{urllib.parse.urlencode(params)}"
+    if pixel_type:
+        params["pixelType"] = pixel_type
+    if rendering_rule:
+        params["renderingRule"] = json.dumps(rendering_rule, separators=(",", ":"))
+    return f"{SENTINEL2_EXPORT}?{urllib.parse.urlencode(params)}"
 
 
-def fetch_satellite_png(lon, lat, size=IMAGE_SIZE, radius_km=ANALYSIS_RADIUS_KM):
-    url = imagery_export_url(lon, lat, radius_km=radius_km, size=size)
+def fetch_remote_bytes(url, timeout=60):
     request = urllib.request.Request(url, headers={"User-Agent": "GeoportalLima/2.0"})
-    with urllib.request.urlopen(request, timeout=60) as response:
-        payload = response.read()
-    return payload, url
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return response.read()
 
 
-def analyze_satellite(payload):
-    image = Image.open(BytesIO(payload)).convert("RGB")
-    width, height = image.size
-    pixels = image.load()
+def fetch_sentinel_index_raster(
+    lon,
+    lat,
+    rendering_rule,
+    size=IMAGE_SIZE,
+    radius_km=ANALYSIS_RADIUS_KM,
+):
+    url = imagery_export_url(
+        lon,
+        lat,
+        radius_km=radius_km,
+        size=size,
+        image_format="tiff",
+        pixel_type="F32",
+        rendering_rule=rendering_rule,
+    )
+    return fetch_remote_bytes(url)
+
+
+def sentinel_preview_url(lon, lat, size=IMAGE_SIZE, radius_km=ANALYSIS_RADIUS_KM):
+    return imagery_export_url(
+        lon,
+        lat,
+        radius_km=radius_km,
+        size=size,
+        image_format="png32",
+        rendering_rule=SENTINEL_NATURAL_COLOR,
+    )
+
+
+def read_single_band_float_image(payload):
+    image = Image.open(BytesIO(payload))
+    if image.mode != "F":
+        image = image.convert("F")
+    return image
+
+
+def analyze_satellite(ndbi_payload, ndvi_payload, ndwi_payload):
+    ndbi_image = read_single_band_float_image(ndbi_payload)
+    ndvi_image = read_single_band_float_image(ndvi_payload)
+    ndwi_image = read_single_band_float_image(ndwi_payload)
+
+    width, height = ndbi_image.size
+    if ndvi_image.size != (width, height) or ndwi_image.size != (width, height):
+        raise ValueError("Sentinel-2 rasters do not share the same dimensions")
+
+    ndbi_pixels = ndbi_image.load()
+    ndvi_pixels = ndvi_image.load()
+    ndwi_pixels = ndwi_image.load()
     center_x = width / 2
     center_y = height / 2
     radius = min(width, height) * 0.44
     radius_sq = radius * radius
 
-    land_samples = 0
-    impervious_count = 0
-    vegetation_count = 0
-    water_shadow_count = 0
-    bare_soil_count = 0
-    gray_count = 0
-    edge_count = 0
-    edge_samples = 0
+    valid_samples = 0
+    analysis_samples = 0
+    positive_count = 0
+    built_up_count = 0
+    dense_built_count = 0
+    vegetation_mask_count = 0
+    water_mask_count = 0
+    neutral_count = 0
+    ndbi_sum = 0.0
+    positive_ndbi_sum = 0.0
 
     for y in range(1, height - 1, 2):
         for x in range(1, width - 1, 2):
@@ -273,71 +334,79 @@ def analyze_satellite(payload):
             if dx * dx + dy * dy > radius_sq:
                 continue
 
-            r, g, b = pixels[x, y]
-            brightness = (r + g + b) / 3.0
-            spread = max(r, g, b) - min(r, g, b)
-            saturation = 0 if max(r, g, b) == 0 else spread / max(r, g, b)
-            exg = 2 * g - r - b
+            ndbi = float(ndbi_pixels[x, y])
+            ndvi = float(ndvi_pixels[x, y])
+            ndwi = float(ndwi_pixels[x, y])
 
-            vegetation = exg > 24 and g > r and g > b
-            water_shadow = brightness < 42 or (b > r + 18 and b > g + 10 and brightness < 135)
-            bare_soil = saturation > 0.24 and r > g + 12 and brightness > 95 and exg < 10
+            if not (
+                math.isfinite(ndbi)
+                and math.isfinite(ndvi)
+                and math.isfinite(ndwi)
+                and -1.25 <= ndbi <= 1.25
+                and -1.25 <= ndvi <= 1.25
+                and -1.25 <= ndwi <= 1.25
+            ):
+                continue
+
+            valid_samples += 1
+            ndbi_sum += ndbi
+
+            vegetation = ndvi >= 0.22 and ndvi > ndbi
+            water = ndwi >= 0.12 and ndwi > ndbi
 
             if vegetation:
-                vegetation_count += 1
+                vegetation_mask_count += 1
                 continue
 
-            if water_shadow:
-                water_shadow_count += 1
+            if water:
+                water_mask_count += 1
                 continue
 
-            land_samples += 1
+            analysis_samples += 1
 
-            gray_like = spread < 36
-            bright_compact = brightness > 88 and saturation < 0.22
-            reflective_roof = brightness > 142 and spread < 60 and saturation < 0.30
-            impervious = (gray_like and brightness > 72) or bright_compact or reflective_roof
+            if ndbi >= 0:
+                positive_count += 1
+                positive_ndbi_sum += ndbi
 
-            if gray_like:
-                gray_count += 1
+            if -0.02 <= ndbi < 0.10:
+                neutral_count += 1
 
-            if bare_soil:
-                bare_soil_count += 1
-                impervious = False
+            if ndbi >= 0.05:
+                built_up_count += 1
+            if ndbi >= 0.18:
+                dense_built_count += 1
 
-            if impervious:
-                impervious_count += 1
+    valid_samples = max(valid_samples, 1)
+    analysis_samples = max(analysis_samples, 1)
+    ndbi_mean = ndbi_sum / valid_samples
+    positive_ndbi_mean = positive_ndbi_sum / positive_count if positive_count else 0.0
+    positive_ratio = positive_count / analysis_samples
+    built_up_ratio = built_up_count / analysis_samples
+    dense_built_ratio = dense_built_count / analysis_samples
+    vegetation_mask_ratio = vegetation_mask_count / valid_samples
+    water_mask_ratio = water_mask_count / valid_samples
+    neutral_ratio = neutral_count / analysis_samples
+    positive_ndbi_norm = min(max((positive_ndbi_mean - 0.05) / 0.30, 0), 1)
 
-            r2, g2, b2 = pixels[x + 1, y]
-            r3, g3, b3 = pixels[x, y + 1]
-            lum = 0.299 * r + 0.587 * g + 0.114 * b
-            lum_right = 0.299 * r2 + 0.587 * g2 + 0.114 * b2
-            lum_down = 0.299 * r3 + 0.587 * g3 + 0.114 * b3
-            contrast = (abs(lum - lum_right) + abs(lum - lum_down)) / 2.0
-            edge_samples += 1
-            if contrast > 18:
-                edge_count += 1
-
-    land_samples = max(land_samples, 1)
-    edge_samples = max(edge_samples, 1)
-    impervious_ratio = impervious_count / land_samples
-    vegetation_ratio = vegetation_count / max(1, vegetation_count + land_samples + water_shadow_count)
-    bare_soil_ratio = bare_soil_count / land_samples
-    gray_ratio = gray_count / land_samples
-    edge_ratio = edge_count / edge_samples
-    edge_norm = min(max((edge_ratio - 0.09) / 0.28, 0), 1)
-
-    raw_score = 0.55 * impervious_ratio + 0.30 * edge_norm + 0.15 * gray_ratio
-    penalized_score = raw_score - 0.18 * bare_soil_ratio + 0.05 * (1 - vegetation_ratio)
+    raw_score = (
+        0.45 * built_up_ratio
+        + 0.25 * dense_built_ratio
+        + 0.20 * positive_ndbi_norm
+        + 0.10 * positive_ratio
+    )
+    penalized_score = raw_score - 0.12 * neutral_ratio
     construction_index = max(0.0, min(1.0, penalized_score))
 
     return {
         "constructionIndex": round(construction_index, 3),
-        "imperviousRatio": round(impervious_ratio, 3),
-        "edgeRatio": round(edge_ratio, 3),
-        "vegetationRatio": round(vegetation_ratio, 3),
-        "bareSoilRatio": round(bare_soil_ratio, 3),
-        "grayRatio": round(gray_ratio, 3),
+        "ndbiMean": round(ndbi_mean, 3),
+        "positiveNdbiMean": round(positive_ndbi_mean, 3),
+        "positiveRatio": round(positive_ratio, 3),
+        "builtUpRatio": round(built_up_ratio, 3),
+        "denseBuiltRatio": round(dense_built_ratio, 3),
+        "vegetationMaskRatio": round(vegetation_mask_ratio, 3),
+        "waterMaskRatio": round(water_mask_ratio, 3),
+        "neutralRatio": round(neutral_ratio, 3),
     }
 
 
@@ -401,7 +470,7 @@ def interpolate_heat(lon, lat, stations):
 
 def station_preview(feature):
     lon, lat = feature["geometry"]["coordinates"]
-    return imagery_export_url(lon, lat, radius_km=ANALYSIS_RADIUS_KM, size=IMAGE_SIZE)
+    return sentinel_preview_url(lon, lat, radius_km=ANALYSIS_RADIUS_KM, size=IMAGE_SIZE)
 
 
 def build_station_seed(feature):
@@ -469,8 +538,12 @@ def grid_cells(boundary_feature, spacing_km=GRID_SPACING_KM):
 
 
 def enrich_station(station_seed, hazard_features, climate_features, mountain_features):
-    payload, preview_url = fetch_satellite_png(station_seed["lon"], station_seed["lat"])
-    metrics = analyze_satellite(payload)
+    preview_url = sentinel_preview_url(station_seed["lon"], station_seed["lat"])
+    metrics = analyze_satellite(
+        fetch_sentinel_index_raster(station_seed["lon"], station_seed["lat"], SENTINEL_NDBI),
+        fetch_sentinel_index_raster(station_seed["lon"], station_seed["lat"], SENTINEL_NDVI),
+        fetch_sentinel_index_raster(station_seed["lon"], station_seed["lat"], SENTINEL_NDWI),
+    )
     hazard_info = find_hazard((station_seed["lon"], station_seed["lat"]), hazard_features)
     climate_context = find_climate_context((station_seed["lon"], station_seed["lat"]), climate_features)
     mountain_context = find_mountain_context((station_seed["lon"], station_seed["lat"]), mountain_features)
@@ -494,8 +567,12 @@ def enrich_station(station_seed, hazard_features, climate_features, mountain_fea
 
 
 def enrich_cell(cell_seed, stations, hazard_features, climate_features, mountain_features):
-    payload, preview_url = fetch_satellite_png(cell_seed["lon"], cell_seed["lat"])
-    metrics = analyze_satellite(payload)
+    preview_url = sentinel_preview_url(cell_seed["lon"], cell_seed["lat"])
+    metrics = analyze_satellite(
+        fetch_sentinel_index_raster(cell_seed["lon"], cell_seed["lat"], SENTINEL_NDBI),
+        fetch_sentinel_index_raster(cell_seed["lon"], cell_seed["lat"], SENTINEL_NDVI),
+        fetch_sentinel_index_raster(cell_seed["lon"], cell_seed["lat"], SENTINEL_NDWI),
+    )
     heat_info = interpolate_heat(cell_seed["lon"], cell_seed["lat"], stations)
     hazard_info = find_hazard((cell_seed["lon"], cell_seed["lat"]), hazard_features)
     climate_context = find_climate_context((cell_seed["lon"], cell_seed["lat"]), climate_features)
@@ -589,14 +666,14 @@ def main():
     output = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "analysisMethod": {
-            "imagery": "Esri World Imagery export",
+            "imagery": "Sentinel-2 ImageServer export",
             "windowRadiusKm": ANALYSIS_RADIUS_KM,
             "sizePx": IMAGE_SIZE,
             "gridSpacingKm": GRID_SPACING_KM,
             "heatInterpolation": "IDW sobre estaciones SENAMHI de Lima",
             "rule": (
-                "Construccion estimada por combinacion local de superficie impermeable, "
-                "textura y tonos grises, con penalizacion por suelo desnudo."
+                "Indice constructivo estimado con NDBI de Sentinel-2, apoyado por mascaras "
+                "espectrales de vegetacion y agua para resaltar superficie edificada."
             ),
         },
         "region": {
