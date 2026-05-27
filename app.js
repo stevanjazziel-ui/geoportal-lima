@@ -10,6 +10,18 @@ const REMOTE_LAYERS = {
     layers: "g_05_01:05_01_001_03_001_512_2021_00_00",
     options: { format: "image/png", transparent: true, opacity: 0.42 },
   },
+  surfaceTemp: {
+    title: "NASA GIBS · MODIS Terra Land Surface Temperature",
+    url: "https://gibs.earthdata.nasa.gov/wms/epsg3857/best/",
+    layers: "MODIS_Terra_Land_Surface_Temp_Day",
+    options: {
+      format: "image/png",
+      transparent: true,
+      opacity: 0.5,
+      version: "1.3.0",
+      styles: "default",
+    },
+  },
   construction: {
     title: "ICL · Proyectos de construccion",
     url: "https://ide.icl.gob.pe:8443/geoserver/IDEP/idep_tg_construccion/wms",
@@ -34,6 +46,14 @@ const SOURCES = [
   {
     label: "SENAMHI · Catalogo IDESEP",
     url: "https://idesep.senamhi.gob.pe/portalidesep/wms.do",
+  },
+  {
+    label: "NASA POWER · climatologia de temperatura, humedad, viento y earth skin temperature",
+    url: "https://power.larc.nasa.gov/docs/services/api/temporal/climatology/",
+  },
+  {
+    label: "NASA GIBS · capa satelital MODIS de temperatura superficial",
+    url: "https://gibs.earthdata.nasa.gov/wms/epsg3857/best/?SERVICE=WMS&REQUEST=GetCapabilities",
   },
   {
     label: "GeoIDEP · Catalogo del Instituto Catastral de Lima",
@@ -223,6 +243,7 @@ function wireToggles() {
   bindToggle("toggle-heatwave", (checked) => toggleLeafletLayer(state.stationLayer, checked));
   bindToggle("toggle-hazard", (checked) => toggleLeafletLayer(state.cellLayer, checked));
   bindToggle("toggle-climate", (checked) => toggleRemoteLayer("climate", checked));
+  bindToggle("toggle-surface-temp", (checked) => toggleRemoteLayer("surfaceTemp", checked));
   bindToggle("toggle-construction", (checked) => toggleRemoteLayer("construction", checked));
   bindToggle("toggle-blocks", (checked) => toggleRemoteLayer("blocks", checked));
   bindToggle("toggle-parks", (checked) => toggleRemoteLayer("parks", checked));
@@ -254,7 +275,10 @@ function loadPreparedData() {
 
   state.data = prepared;
   state.sortedByPriority = [...prepared.cells].sort(
-    (a, b) => b.priorityScore - a.priorityScore || b.constructionIndex - a.constructionIndex
+    (a, b) =>
+      b.priorityScore - a.priorityScore ||
+      Number(b.hybridHeatIndex || 0) - Number(a.hybridHeatIndex || 0) ||
+      b.constructionIndex - a.constructionIndex
   );
 
   drawRegionBoundary();
@@ -268,12 +292,12 @@ function loadPreparedData() {
   updateFocusCard();
   scheduleMapResize();
   setStatus(
-    `Resultados listos. Se analizaron ${prepared.cells.length} celdas sobre toda la region Lima y ${prepared.stations.length} estaciones base de SENAMHI.`,
+    `Resultados listos. Se analizaron ${prepared.cells.length} celdas con frecuencia oficial SENAMHI, termica hibrida y ${prepared.stations.length} estaciones base.`,
     "ok"
   );
 
   dom.iclStatus.textContent =
-    "Las capas del ICL quedan como apoyo. El indice principal ya fue calculado localmente para toda la region Lima con NDBI de Sentinel-2.";
+    "Las capas del ICL quedan como apoyo. La prioridad principal ya cruza frecuencia SENAMHI, termica hibrida NASA POWER y NDBI de Sentinel-2.";
 }
 
 function drawRegionBoundary() {
@@ -489,13 +513,13 @@ function syncBaseMapButtons() {
 function updateMetrics() {
   const cells = state.data.cells;
   const mediumPlus = cells.filter((cell) => HAZARD_ORDER[cell.hazardLevel] >= HAZARD_ORDER.Medio).length;
-  const peakFrequency = cells.reduce((max, cell) => Math.max(max, cell.frequency), 0);
+  const peakHybridTemp = cells.reduce((max, cell) => Math.max(max, Number(cell.hybridTempC || 0)), 0);
   const avgConstruction =
     cells.reduce((sum, cell) => sum + Number(cell.constructionIndex || 0), 0) / cells.length;
 
   dom.metricPoints.textContent = String(cells.length);
   dom.metricRisk.textContent = String(mediumPlus);
-  dom.metricPeak.textContent = peakFrequency.toFixed(2);
+  dom.metricPeak.textContent = `${peakHybridTemp.toFixed(1)}°C`;
   dom.metricConstruction.textContent = avgConstruction.toFixed(2);
 }
 
@@ -504,23 +528,24 @@ function updateHeroSummary() {
 
   const topPriority = state.sortedByPriority[0];
   const hottestCell = [...state.data.cells].sort(
-    (a, b) => b.frequency - a.frequency || b.priorityScore - a.priorityScore
+    (a, b) => Number(b.hybridTempC || 0) - Number(a.hybridTempC || 0) || b.priorityScore - a.priorityScore
   )[0];
   const peakStation =
     state.data.stations.reduce(
-      (best, station) => (station.frequency > best.frequency ? station : best),
+      (best, station) =>
+        Number(station.hybridTempC || 0) > Number(best.hybridTempC || 0) ? station : best,
       state.data.stations[0]
     ) || null;
 
   dom.heroCellCount.textContent = String(state.data.cells.length);
-  dom.heroPeakHeat.textContent = hottestCell.frequency.toFixed(2);
+  dom.heroPeakHeat.textContent = `${Number(hottestCell.hybridTempC || 0).toFixed(1)}°C`;
   dom.heroTopSector.textContent = compactLabel(topPriority.name, 26);
   dom.heroTopStation.textContent = compactLabel(topPriority.nearestStation || peakStation?.name || "--", 24);
   dom.heroSummaryNote.textContent =
     `${compactLabel(topPriority.name, 42)} lidera la prioridad regional (${topPriority.priorityScore.toFixed(2)}), ` +
-    `con vulnerabilidad ${String(topPriority.hazardLevel).toLowerCase()} y pico termico de ${hottestCell.frequency.toFixed(
-      2
-    )}.`;
+    `con frecuencia oficial ${Number(topPriority.frequency || 0).toFixed(2)}, sensacion hibrida ${Number(
+      topPriority.hybridTempC || 0
+    ).toFixed(1)}°C y vulnerabilidad ${String(topPriority.hazardLevel).toLowerCase()}.`;
 }
 
 function renderRanking() {
@@ -535,12 +560,15 @@ function renderRanking() {
         <span class="ranking-score">prioridad ${cell.priorityScore.toFixed(2)}</span>
       </div>
       <div class="ranking-meta">
-        <span class="ranking-chip">Construccion ${cell.constructionIndex.toFixed(2)}</span>
-        <span class="ranking-chip">Calor ${cell.frequency.toFixed(2)}</span>
+        <span class="ranking-chip">Frecuencia ${Number(cell.frequency || 0).toFixed(2)}</span>
+        <span class="ranking-chip">Sensacion ${Number(cell.hybridTempC || 0).toFixed(1)}°C</span>
+        <span class="ranking-chip">Superficie ${Number(cell.surfaceTempC || 0).toFixed(1)}°C</span>
         <span class="ranking-chip">Riesgo ${escapeHtml(cell.hazardLevel)}</span>
       </div>
       <p class="ranking-text">
-        Cerca de ${escapeHtml(cell.nearestStation)} · ${escapeHtml(cell.climateDescription)} · ${
+        Cerca de ${escapeHtml(cell.nearestStation)} · hibrido ${Number(cell.hybridHeatIndex || 0).toFixed(
+          2
+        )} · ${escapeHtml(cell.climateDescription)} · ${
           cell.mountainZone ? "celda serrana o de loma." : "celda no serrana."
         }
       </p>
@@ -555,9 +583,11 @@ function updateFocusCard() {
   const topPriority = state.sortedByPriority[0];
   const topConstruction = [...state.data.cells].sort((a, b) => b.constructionIndex - a.constructionIndex)[0];
 
-  dom.focusTitle.textContent = `${topPriority.name} lidera el cruce calor + vulnerabilidad`;
+  dom.focusTitle.textContent = `${topPriority.name} lidera el cruce frecuencia + termica hibrida`;
   dom.focusDescription.textContent =
-    `${topPriority.name} alcanza prioridad ${topPriority.priorityScore.toFixed(2)} y se apoya en la estacion ${topPriority.nearestStation}. ` +
+    `${topPriority.name} alcanza prioridad ${topPriority.priorityScore.toFixed(2)}, frecuencia oficial ${Number(
+      topPriority.frequency || 0
+    ).toFixed(2)} y sensacion hibrida ${Number(topPriority.hybridTempC || 0).toFixed(1)}°C. ` +
     `${topConstruction.name} muestra el mayor indice constructivo regional (${topConstruction.constructionIndex.toFixed(
       2
     )}).`;
@@ -597,6 +627,9 @@ function showRiskWindowForCell(cell) {
   const hazardRank = getHazardRank(cell.hazardLevel);
   const builtUpRatio = getBuiltUpRatio(cell);
   const ndbiMean = getNdbiMean(cell);
+  const hybridTempC = getHybridTempC(cell);
+  const hybridHeatIndex = getHybridHeatIndex(cell);
+  const surfaceTempC = getSurfaceTempC(cell);
   const tone = getRiskTone(integratedRisk);
   const mountainContext = hasMountainContext(cell)
     ? "Tambien presenta condicion serrana o de loma, lo que vuelve mas delicada la expansion y la respuesta termica."
@@ -607,19 +640,25 @@ function showRiskWindowForCell(cell) {
   dom.riskWindowTitle.textContent = cell.name;
   dom.riskWindowSummary.textContent =
     `${cell.name} registra un riesgo integrado de ${integratedRisk}/100, con vulnerabilidad ${hazardRank}/4 ` +
-    `(${cell.hazardLevel}), calor ${cell.frequency.toFixed(2)} e indice constructivo ${cell.constructionIndex.toFixed(
-      2
-    )}. ${mountainContext}`;
+    `(${cell.hazardLevel}), frecuencia oficial ${Number(cell.frequency || 0).toFixed(2)}, sensacion hibrida ${hybridTempC.toFixed(
+      1
+    )}°C, superficie ${surfaceTempC.toFixed(1)}°C e indice constructivo ${cell.constructionIndex.toFixed(2)}. ${mountainContext}`;
   dom.riskWindowSolution.textContent = buildRiskRecommendation(cell, {
     integratedRisk,
     hazardRank,
     builtUpRatio,
+    hybridTempC,
+    hybridHeatIndex,
+    surfaceTempC,
   });
   dom.riskWindowMetrics.innerHTML = buildRiskMetricsHtml(cell, {
     integratedRisk,
     hazardRank,
     builtUpRatio,
     ndbiMean,
+    hybridTempC,
+    hybridHeatIndex,
+    surfaceTempC,
   });
 }
 
@@ -635,29 +674,47 @@ function buildRiskMetricsHtml(cell, metrics) {
       detail: `Prioridad ${cell.priorityScore.toFixed(2)}`,
     },
     {
-      label: "Vulnerabilidad",
-      value: `${metrics.hazardRank}/4`,
-      detail: String(cell.hazardLevel || "Sin dato"),
+      label: "Frecuencia SENAMHI",
+      value: Number(cell.frequency || 0).toFixed(2),
+      detail: `${String(cell.heatLabel || "Sin dato")} · ${String(cell.nearestStation || "--")}`,
     },
     {
-      label: "Calor",
-      value: cell.frequency.toFixed(2),
-      detail: String(cell.heatLabel || "Sin dato"),
+      label: "Sensacion hibrida",
+      value: `${metrics.hybridTempC.toFixed(1)}°C`,
+      detail: `Indice ${metrics.hybridHeatIndex.toFixed(2)} · ${String(cell.hybridHeatLabel || "Sin dato")}`,
+    },
+    {
+      label: "Superficie refinada",
+      value: `${metrics.surfaceTempC.toFixed(1)}°C`,
+      detail: `POWER ${getThermalMetric(cell, "earthSkinTempC").toFixed(1)}°C + ajuste ${getThermalMetric(
+        cell,
+        "surfaceAdjustmentC"
+      ).toFixed(1)}°C`,
+    },
+    {
+      label: "Humedad y viento",
+      value: `${getThermalMetric(cell, "relativeHumidity").toFixed(0)}% · ${getThermalMetric(
+        cell,
+        "windSpeedMs"
+      ).toFixed(1)} m/s`,
+      detail: `Tmax ${getThermalMetric(cell, "airTempMaxC").toFixed(1)}°C · aparente ${getThermalMetric(
+        cell,
+        "apparentTempC"
+      ).toFixed(1)}°C`,
     },
     {
       label: "Construccion NDBI",
       value: cell.constructionIndex.toFixed(2),
-      detail: String(cell.constructionLabel || "Sin dato"),
+      detail: `${String(cell.constructionLabel || "Sin dato")} · ${Math.round(
+        metrics.builtUpRatio * 100
+      )}% edificada · NDBI ${metrics.ndbiMean.toFixed(2)}`,
     },
     {
-      label: "Cobertura edificada",
-      value: `${Math.round(metrics.builtUpRatio * 100)}%`,
-      detail: `NDBI medio ${metrics.ndbiMean.toFixed(2)}`,
-    },
-    {
-      label: "Estacion base",
-      value: String(cell.nearestStation || "--"),
-      detail: `${Number(cell.nearestStationDistanceKm || 0).toFixed(1)} km`,
+      label: "Vulnerabilidad",
+      value: `${metrics.hazardRank}/4`,
+      detail: `${String(cell.hazardLevel || "Sin dato")} · ${Number(cell.nearestStationDistanceKm || 0).toFixed(
+        1
+      )} km de la estacion base`,
     },
   ];
 
@@ -690,6 +747,22 @@ function getNdbiMean(cell) {
   return Number(cell?.satelliteMetrics?.ndbiMean ?? 0);
 }
 
+function getThermalMetric(cell, key) {
+  return Number(cell?.thermalMetrics?.[key] ?? cell?.[key] ?? 0);
+}
+
+function getHybridHeatIndex(cell) {
+  return getThermalMetric(cell, "hybridHeatIndex");
+}
+
+function getHybridTempC(cell) {
+  return getThermalMetric(cell, "hybridTempC");
+}
+
+function getSurfaceTempC(cell) {
+  return getThermalMetric(cell, "surfaceTempC");
+}
+
 function hasMountainContext(cell) {
   return Boolean(cell?.mountainZone || (Array.isArray(cell?.mountainContext) && cell.mountainContext.length));
 }
@@ -702,31 +775,35 @@ function getRiskTone(score) {
 }
 
 function buildRiskRecommendation(cell, metrics) {
-  const highHeat = Number(cell.frequency || 0) >= 0.9;
-  const veryHighHeat = Number(cell.frequency || 0) >= 1.1;
+  const highFrequency = Number(cell.frequency || 0) >= 0.9;
+  const veryHighFrequency = Number(cell.frequency || 0) >= 1.1;
+  const highHybrid = metrics.hybridHeatIndex >= 0.55 || metrics.hybridTempC >= 31;
+  const veryHighHybrid = metrics.hybridHeatIndex >= 0.72 || metrics.hybridTempC >= 33;
+  const hotSurface = metrics.surfaceTempC >= 26.5;
   const highConstruction = Number(cell.constructionIndex || 0) >= 0.52;
   const denseConstruction = Number(cell.constructionIndex || 0) >= 0.72;
   const highHazard = metrics.hazardRank >= 3;
   const veryHighHazard = metrics.hazardRank >= 4;
   const mountain = hasMountainContext(cell);
   const stationDistance = Number(cell.nearestStationDistanceKm || 0);
+  const humidity = getThermalMetric(cell, "relativeHumidity");
 
   let mainAction =
     "Mantener seguimiento de la celda y guiar nuevas obras con sombra, vegetacion y materiales de baja absorcion termica.";
 
-  if (veryHighHazard && highHeat && highConstruction) {
+  if (veryHighHazard && veryHighHybrid && highConstruction) {
     mainAction =
       "Priorizar enfriamiento urbano inmediato: arborizacion de calles, sombra continua, techos frios y retiro progresivo de superficies impermeables en vias y equipamientos.";
   } else if (highHazard && mountain) {
     mainAction =
       "Contener la expansion en ladera o loma, reforzar drenaje y estabilidad del suelo, y ubicar sombra y espacios publicos frescos en los nucleos mas expuestos.";
-  } else if (highHeat && !highConstruction) {
+  } else if ((highFrequency || highHybrid) && !highConstruction) {
     mainAction =
       "Conservar suelo abierto y cobertura natural, evitar nuevo asfalto innecesario y sumar parques de bolsillo o franjas verdes antes de consolidar nueva edificacion.";
-  } else if (highConstruction || denseConstruction) {
+  } else if (hotSurface && (highConstruction || denseConstruction)) {
     mainAction =
       "Aplicar reconversion termica del tejido construido con techos frios, pavimentos permeables, arbolado vial y regulacion de patios duros o cubiertas reflectantes.";
-  } else if (metrics.integratedRisk >= 55 || veryHighHeat) {
+  } else if (metrics.integratedRisk >= 55 || veryHighFrequency || veryHighHybrid) {
     mainAction =
       "Intervenir primero equipamientos sensibles, ejes peatonales y plazas con sombra, agua y materiales mas reflectivos para bajar exposicion termica.";
   }
@@ -743,6 +820,10 @@ function buildRiskRecommendation(cell, metrics) {
     supportNotes.push(
       `la estacion de apoyo queda a ${stationDistance.toFixed(1)} km y vale complementar con verificacion local`
     );
+  }
+
+  if (humidity >= 72 && highHybrid) {
+    supportNotes.push("la humedad estacional sigue alta y puede sostener sensaciones termicas elevadas aun con viento moderado");
   }
 
   if (highHazard && !mountain) {
@@ -769,10 +850,16 @@ function buildCellPopupHtml(cell) {
       <h3 class="popup-title">${escapeHtml(cell.name)}</h3>
       <img class="popup-thumb" src="${cell.satellitePreview}" alt="Muestra satelital de ${escapeHtml(cell.name)}">
       <div class="popup-grid">
+        <span><strong>Frecuencia SENAMHI:</strong> ${Number(cell.frequency || 0).toFixed(2)} · ${escapeHtml(
+          cell.heatLabel
+        )}</span>
+        <span><strong>Sensacion hibrida:</strong> ${getHybridTempC(cell).toFixed(1)}°C · ${Number(
+          cell.hybridHeatIndex || 0
+        ).toFixed(2)}</span>
+        <span><strong>Temperatura superficial:</strong> ${getSurfaceTempC(cell).toFixed(1)}°C</span>
         <span><strong>Indice constructivo:</strong> ${cell.constructionIndex.toFixed(2)} (${escapeHtml(
           cell.constructionLabel
         )})</span>
-        <span><strong>Calor interpolado:</strong> ${cell.frequency.toFixed(2)} · ${escapeHtml(cell.heatLabel)}</span>
         <span><strong>Vulnerabilidad:</strong> ${escapeHtml(cell.hazardLevel)} (${escapeHtml(
           cell.hazardRange
         )})</span>
@@ -781,6 +868,9 @@ function buildCellPopupHtml(cell) {
         <span><strong>Estacion mas cercana:</strong> ${escapeHtml(cell.nearestStation)} (${cell.nearestStationDistanceKm.toFixed(
           1
         )} km)</span>
+        <span><strong>Humedad y viento:</strong> ${getThermalMetric(cell, "relativeHumidity").toFixed(
+          0
+        )}% · ${getThermalMetric(cell, "windSpeedMs").toFixed(1)} m/s</span>
         <span><strong>Metrica NDBI:</strong> media ${cell.satelliteMetrics.ndbiMean.toFixed(
           2
         )}, cobertura construida ${cell.satelliteMetrics.builtUpRatio.toFixed(2)}</span>
@@ -802,9 +892,13 @@ function buildStationPopupHtml(station) {
         station.name
       )}">
       <div class="popup-grid">
-        <span><strong>Frecuencia observada:</strong> ${station.frequency.toFixed(2)} · ${escapeHtml(
+        <span><strong>Frecuencia observada:</strong> ${Number(station.frequency || 0).toFixed(2)} · ${escapeHtml(
           station.heatLabel
         )}</span>
+        <span><strong>Sensacion hibrida:</strong> ${getHybridTempC(station).toFixed(1)}°C · ${Number(
+          station.hybridHeatIndex || 0
+        ).toFixed(2)}</span>
+        <span><strong>Temperatura superficial:</strong> ${getSurfaceTempC(station).toFixed(1)}°C</span>
         <span><strong>Indice constructivo:</strong> ${station.constructionIndex.toFixed(2)} (${escapeHtml(
           station.constructionLabel
         )})</span>
@@ -814,6 +908,9 @@ function buildStationPopupHtml(station) {
         <span><strong>Clase climatica:</strong> ${escapeHtml(station.climateDescription)}</span>
         <span><strong>Contexto de montana:</strong> ${escapeHtml(mountainText)}</span>
         <span><strong>Eventos de calor:</strong> ${station.eventCount} en ${station.summerDays} dias observados</span>
+        <span><strong>Humedad y viento:</strong> ${getThermalMetric(station, "relativeHumidity").toFixed(
+          0
+        )}% · ${getThermalMetric(station, "windSpeedMs").toFixed(1)} m/s</span>
         <span><strong>Metrica NDBI:</strong> media ${station.satelliteMetrics.ndbiMean.toFixed(
           2
         )}, cobertura construida ${station.satelliteMetrics.builtUpRatio.toFixed(2)}</span>

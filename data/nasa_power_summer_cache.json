@@ -1,0 +1,302 @@
+{
+  "-12.000,-77.000": {
+    "gridLat": -12.0,
+    "gridLon": -77.0,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 26.578,
+    "relativeHumidity": 74.31,
+    "windSpeedMs": 2.412,
+    "earthSkinTempC": 21.922,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-11.000,-77.500": {
+    "gridLat": -11.0,
+    "gridLon": -77.5,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 28.328,
+    "relativeHumidity": 74.615,
+    "windSpeedMs": 2.675,
+    "earthSkinTempC": 23.81,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-10.500,-78.000": {
+    "gridLat": -10.5,
+    "gridLon": -78.0,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 27.135,
+    "relativeHumidity": 86.377,
+    "windSpeedMs": 2.52,
+    "earthSkinTempC": 22.58,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-11.500,-77.000": {
+    "gridLat": -11.5,
+    "gridLon": -77.0,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 25.547,
+    "relativeHumidity": 70.655,
+    "windSpeedMs": 2.328,
+    "earthSkinTempC": 19.73,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-13.000,-76.500": {
+    "gridLat": -13.0,
+    "gridLon": -76.5,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 26.627,
+    "relativeHumidity": 73.435,
+    "windSpeedMs": 2.417,
+    "earthSkinTempC": 21.332,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-13.500,-76.000": {
+    "gridLat": -13.5,
+    "gridLon": -76.0,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 28.075,
+    "relativeHumidity": 76.765,
+    "windSpeedMs": 2.91,
+    "earthSkinTempC": 23.407,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-13.000,-75.500": {
+    "gridLat": -13.0,
+    "gridLon": -75.5,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 21.64,
+    "relativeHumidity": 68.22,
+    "windSpeedMs": 1.988,
+    "earthSkinTempC": 12.795,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-12.500,-76.500": {
+    "gridLat": -12.5,
+    "gridLon": -76.5,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 24.762,
+    "relativeHumidity": 69.72,
+    "windSpeedMs": 2.167,
+    "earthSkinTempC": 18.0,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-12.500,-76.000": {
+    "gridLat": -12.5,
+    "gridLon": -76.0,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 24.762,
+    "relativeHumidity": 69.72,
+    "windSpeedMs": 2.167,
+    "earthSkinTempC": 18.0,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-12.500,-75.500": {
+    "gridLat": -12.5,
+    "gridLon": -75.5,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 18.885,
+    "relativeHumidity": 71.138,
+    "windSpeedMs": 1.778,
+    "earthSkinTempC": 9.928,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-12.500,-77.000": {
+    "gridLat": -12.5,
+    "gridLon": -77.0,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 25.017,
+    "relativeHumidity": 85.132,
+    "windSpeedMs": 2.61,
+    "earthSkinTempC": 21.767,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-11.500,-76.500": {
+    "gridLat": -11.5,
+    "gridLon": -76.5,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 19.473,
+    "relativeHumidity": 68.608,
+    "windSpeedMs": 1.725,
+    "earthSkinTempC": 10.628,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-12.000,-76.000": {
+    "gridLat": -12.0,
+    "gridLon": -76.0,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 22.003,
+    "relativeHumidity": 67.14,
+    "windSpeedMs": 1.825,
+    "earthSkinTempC": 13.84,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-11.000,-77.000": {
+    "gridLat": -11.0,
+    "gridLon": -77.0,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 23.352,
+    "relativeHumidity": 68.51,
+    "windSpeedMs": 1.775,
+    "earthSkinTempC": 14.23,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-11.000,-76.500": {
+    "gridLat": -11.0,
+    "gridLon": -76.5,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 18.855,
+    "relativeHumidity": 73.67,
+    "windSpeedMs": 1.635,
+    "earthSkinTempC": 8.963,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-10.500,-77.500": {
+    "gridLat": -10.5,
+    "gridLon": -77.5,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 27.503,
+    "relativeHumidity": 71.358,
+    "windSpeedMs": 2.45,
+    "earthSkinTempC": 20.288,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-10.500,-77.000": {
+    "gridLat": -10.5,
+    "gridLon": -77.0,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 20.818,
+    "relativeHumidity": 69.76,
+    "windSpeedMs": 1.3,
+    "earthSkinTempC": 11.593,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-11.500,-77.500": {
+    "gridLat": -11.5,
+    "gridLon": -77.5,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 25.867,
+    "relativeHumidity": 85.168,
+    "windSpeedMs": 2.743,
+    "earthSkinTempC": 22.98,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-12.000,-76.500": {
+    "gridLat": -12.0,
+    "gridLon": -76.5,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 22.003,
+    "relativeHumidity": 67.14,
+    "windSpeedMs": 1.825,
+    "earthSkinTempC": 13.84,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  },
+  "-13.000,-76.000": {
+    "gridLat": -13.0,
+    "gridLon": -76.0,
+    "range": "20-year Meteorological and Solar Monthly & Annual Climatologies (January 2001 - December 2020)",
+    "airTempMaxC": 26.627,
+    "relativeHumidity": 73.435,
+    "windSpeedMs": 2.417,
+    "earthSkinTempC": 21.332,
+    "months": [
+      "DEC",
+      "JAN",
+      "FEB",
+      "MAR"
+    ]
+  }
+}

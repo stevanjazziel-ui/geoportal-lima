@@ -16,6 +16,7 @@ DATA_DIR = ROOT / "data"
 OUTPUT_JS = DATA_DIR / "lima_analysis_data.js"
 MOUNTAIN_JS = DATA_DIR / "lima_mountain_zones.js"
 BOUNDARY_CACHE = DATA_DIR / "ign_lima_region_boundary.geojson"
+POWER_CACHE = DATA_DIR / "nasa_power_summer_cache.json"
 
 SENTINEL2_IMAGE_SERVER = "https://sentinel.arcgis.com/arcgis/rest/services/Sentinel2/ImageServer"
 SENTINEL2_EXPORT = f"{SENTINEL2_IMAGE_SERVER}/exportImage"
@@ -34,6 +35,11 @@ GRID_SPACING_KM = 16.0
 IMAGE_SIZE = 224
 ANALYSIS_RADIUS_KM = 0.65
 WORKERS = 4
+POWER_COMMUNITY = "SB"
+POWER_GRID_DEGREES = 0.5
+POWER_SUMMER_MONTHS = ("DEC", "JAN", "FEB", "MAR")
+POWER_CLIMATOLOGY_URL = "https://power.larc.nasa.gov/api/temporal/climatology/point"
+POWER_PARAMETERS = ("T2M_MAX", "RH2M", "WS2M", "TS")
 
 SENTINEL_NATURAL_COLOR = {"rasterFunction": "Natural Color with DRA"}
 SENTINEL_NDBI = {"rasterFunction": "Normalized Difference Built-Up Index (NDBI)"}
@@ -79,6 +85,17 @@ def slugify(value):
 def load_geojson(path):
     with path.open("r", encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def load_json_cache(path):
+    if not path.exists():
+        return {}
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def save_json_cache(path, payload):
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def load_or_fetch_geojson(cache_path, url):
@@ -262,6 +279,83 @@ def fetch_remote_bytes(url, timeout=60):
         return response.read()
 
 
+def clamp(value, minimum=0.0, maximum=1.0):
+    return max(minimum, min(maximum, value))
+
+
+def seasonal_average(month_values, months=POWER_SUMMER_MONTHS):
+    values = []
+    for month in months:
+        value = month_values.get(month)
+        if value is None:
+            continue
+        value = float(value)
+        if not math.isfinite(value) or value <= -999:
+            continue
+        values.append(value)
+    if not values:
+        return None
+    return round(sum(values) / len(values), 3)
+
+
+def round_power_grid(value):
+    return round(round(value / POWER_GRID_DEGREES) * POWER_GRID_DEGREES, 3)
+
+
+def power_cache_key(lon, lat):
+    return f"{round_power_grid(lat):.3f},{round_power_grid(lon):.3f}"
+
+
+def fetch_power_climatology(lon, lat):
+    params = {
+        "parameters": ",".join(POWER_PARAMETERS),
+        "community": POWER_COMMUNITY,
+        "longitude": round_power_grid(lon),
+        "latitude": round_power_grid(lat),
+        "format": "JSON",
+    }
+    url = f"{POWER_CLIMATOLOGY_URL}?{urllib.parse.urlencode(params)}"
+    payload = json.loads(fetch_remote_bytes(url, timeout=45).decode("utf-8"))
+    parameter_root = payload["properties"]["parameter"]
+    return {
+        "gridLat": round_power_grid(lat),
+        "gridLon": round_power_grid(lon),
+        "range": payload["header"].get("range", ""),
+        "airTempMaxC": seasonal_average(parameter_root["T2M_MAX"]),
+        "relativeHumidity": seasonal_average(parameter_root["RH2M"]),
+        "windSpeedMs": seasonal_average(parameter_root["WS2M"]),
+        "earthSkinTempC": seasonal_average(parameter_root["TS"]),
+        "months": list(POWER_SUMMER_MONTHS),
+    }
+
+
+def prefetch_power_metrics(points):
+    cache = load_json_cache(POWER_CACHE)
+    pending = {}
+
+    for point in points:
+        key = power_cache_key(point["lon"], point["lat"])
+        if key not in cache:
+            pending[key] = (point["lon"], point["lat"])
+
+    if pending:
+        with ThreadPoolExecutor(max_workers=min(6, len(pending))) as executor:
+            future_map = {
+                executor.submit(fetch_power_climatology, lon, lat): key
+                for key, (lon, lat) in pending.items()
+            }
+            for future in as_completed(future_map):
+                cache[future_map[future]] = future.result()
+        save_json_cache(POWER_CACHE, cache)
+
+    return cache
+
+
+def get_power_metrics(lon, lat, power_cache):
+    key = power_cache_key(lon, lat)
+    return dict(power_cache[key])
+
+
 def fetch_sentinel_index_raster(
     lon,
     lat,
@@ -430,10 +524,84 @@ def heat_label(frequency):
     return "Baja"
 
 
-def priority_score(heat_frequency, hazard_level, construction_index):
-    heat_score = min(max(heat_frequency / 1.35, 0), 1)
+def thermal_label(score):
+    if score >= 0.72:
+        return "Muy alta"
+    if score >= 0.54:
+        return "Alta"
+    if score >= 0.36:
+        return "Media"
+    return "Baja"
+
+
+def vapor_pressure_hpa(temp_c, relative_humidity):
+    return (relative_humidity / 100.0) * 6.105 * math.exp((17.27 * temp_c) / (237.7 + temp_c))
+
+
+def apparent_temperature_c(temp_c, relative_humidity, wind_speed_ms):
+    vapor_pressure = vapor_pressure_hpa(temp_c, relative_humidity)
+    return temp_c + 0.33 * vapor_pressure - 0.70 * wind_speed_ms - 4.0
+
+
+def surface_adjustment_c(satellite_metrics):
+    urban_heat = (
+        4.6 * satellite_metrics["builtUpRatio"]
+        + 2.4 * satellite_metrics["denseBuiltRatio"]
+        + 1.8 * max(satellite_metrics["positiveNdbiMean"], 0.0)
+    )
+    cooling = (
+        3.8 * satellite_metrics["vegetationMaskRatio"]
+        + 1.4 * satellite_metrics["waterMaskRatio"]
+        + 0.8 * satellite_metrics["neutralRatio"]
+    )
+    return round(max(-2.5, min(6.5, urban_heat - cooling - 0.9)), 3)
+
+
+def build_thermal_metrics(frequency, satellite_metrics, power_metrics):
+    air_temp_max_c = float(power_metrics["airTempMaxC"])
+    relative_humidity = float(power_metrics["relativeHumidity"])
+    wind_speed_ms = float(power_metrics["windSpeedMs"])
+    earth_skin_temp_c = float(power_metrics["earthSkinTempC"])
+    surface_delta_c = surface_adjustment_c(satellite_metrics)
+    surface_temp_c = earth_skin_temp_c + surface_delta_c
+    apparent_temp = apparent_temperature_c(air_temp_max_c, relative_humidity, wind_speed_ms)
+    hybrid_temp_c = apparent_temp + 0.2 * surface_delta_c
+
+    frequency_score = clamp(frequency / 1.35, 0.0, 1.0)
+    apparent_score = clamp((apparent_temp - 24.0) / 10.0, 0.0, 1.0)
+    surface_score = clamp((surface_temp_c - 20.0) / 10.0, 0.0, 1.0)
+    hybrid_index = clamp(
+        0.55 * frequency_score + 0.25 * apparent_score + 0.20 * surface_score,
+        0.0,
+        1.0,
+    )
+
+    return {
+        "frequencyScore": round(frequency_score, 3),
+        "apparentScore": round(apparent_score, 3),
+        "surfaceScore": round(surface_score, 3),
+        "airTempMaxC": round(air_temp_max_c, 2),
+        "relativeHumidity": round(relative_humidity, 2),
+        "windSpeedMs": round(wind_speed_ms, 2),
+        "earthSkinTempC": round(earth_skin_temp_c, 2),
+        "surfaceAdjustmentC": round(surface_delta_c, 2),
+        "surfaceTempC": round(surface_temp_c, 2),
+        "apparentTempC": round(apparent_temp, 2),
+        "hybridTempC": round(hybrid_temp_c, 2),
+        "hybridHeatIndex": round(hybrid_index, 3),
+        "hybridHeatLabel": thermal_label(hybrid_index),
+        "powerRange": power_metrics["range"],
+        "powerMonths": list(power_metrics["months"]),
+        "powerGrid": {
+            "lat": round(power_metrics["gridLat"], 3),
+            "lon": round(power_metrics["gridLon"], 3),
+        },
+    }
+
+
+def priority_score(thermal_index, hazard_level, construction_index):
     hazard_score = HAZARD_SCORE.get(hazard_level, 0)
-    value = 0.4 * heat_score + 0.3 * hazard_score + 0.3 * construction_index
+    value = 0.4 * thermal_index + 0.3 * hazard_score + 0.3 * construction_index
     return round(value, 3)
 
 
@@ -537,13 +705,15 @@ def grid_cells(boundary_feature, spacing_km=GRID_SPACING_KM):
     return cells
 
 
-def enrich_station(station_seed, hazard_features, climate_features, mountain_features):
+def enrich_station(station_seed, hazard_features, climate_features, mountain_features, power_cache):
     preview_url = sentinel_preview_url(station_seed["lon"], station_seed["lat"])
     metrics = analyze_satellite(
         fetch_sentinel_index_raster(station_seed["lon"], station_seed["lat"], SENTINEL_NDBI),
         fetch_sentinel_index_raster(station_seed["lon"], station_seed["lat"], SENTINEL_NDVI),
         fetch_sentinel_index_raster(station_seed["lon"], station_seed["lat"], SENTINEL_NDWI),
     )
+    power_metrics = get_power_metrics(station_seed["lon"], station_seed["lat"], power_cache)
+    thermal_metrics = build_thermal_metrics(station_seed["frequency"], metrics, power_metrics)
     hazard_info = find_hazard((station_seed["lon"], station_seed["lat"]), hazard_features)
     climate_context = find_climate_context((station_seed["lon"], station_seed["lat"]), climate_features)
     mountain_context = find_mountain_context((station_seed["lon"], station_seed["lat"]), mountain_features)
@@ -557,16 +727,27 @@ def enrich_station(station_seed, hazard_features, climate_features, mountain_fea
     station_seed["constructionIndex"] = metrics["constructionIndex"]
     station_seed["constructionLabel"] = construction_label(metrics["constructionIndex"])
     station_seed["satelliteMetrics"] = metrics
+    station_seed["thermalMetrics"] = thermal_metrics
+    station_seed["hybridHeatIndex"] = thermal_metrics["hybridHeatIndex"]
+    station_seed["hybridHeatLabel"] = thermal_metrics["hybridHeatLabel"]
+    station_seed["hybridTempC"] = thermal_metrics["hybridTempC"]
+    station_seed["apparentTempC"] = thermal_metrics["apparentTempC"]
+    station_seed["surfaceTempC"] = thermal_metrics["surfaceTempC"]
+    station_seed["airTempMaxC"] = thermal_metrics["airTempMaxC"]
+    station_seed["relativeHumidity"] = thermal_metrics["relativeHumidity"]
+    station_seed["windSpeedMs"] = thermal_metrics["windSpeedMs"]
+    station_seed["earthSkinTempC"] = thermal_metrics["earthSkinTempC"]
+    station_seed["surfaceAdjustmentC"] = thermal_metrics["surfaceAdjustmentC"]
     station_seed["satellitePreview"] = preview_url
     station_seed["priorityScore"] = priority_score(
-        station_seed["frequency"],
+        station_seed["hybridHeatIndex"],
         station_seed["hazardLevel"],
         station_seed["constructionIndex"],
     )
     return station_seed
 
 
-def enrich_cell(cell_seed, stations, hazard_features, climate_features, mountain_features):
+def enrich_cell(cell_seed, stations, hazard_features, climate_features, mountain_features, power_cache):
     preview_url = sentinel_preview_url(cell_seed["lon"], cell_seed["lat"])
     metrics = analyze_satellite(
         fetch_sentinel_index_raster(cell_seed["lon"], cell_seed["lat"], SENTINEL_NDBI),
@@ -574,6 +755,8 @@ def enrich_cell(cell_seed, stations, hazard_features, climate_features, mountain
         fetch_sentinel_index_raster(cell_seed["lon"], cell_seed["lat"], SENTINEL_NDWI),
     )
     heat_info = interpolate_heat(cell_seed["lon"], cell_seed["lat"], stations)
+    power_metrics = get_power_metrics(cell_seed["lon"], cell_seed["lat"], power_cache)
+    thermal_metrics = build_thermal_metrics(heat_info["frequency"], metrics, power_metrics)
     hazard_info = find_hazard((cell_seed["lon"], cell_seed["lat"]), hazard_features)
     climate_context = find_climate_context((cell_seed["lon"], cell_seed["lat"]), climate_features)
     mountain_context = find_mountain_context((cell_seed["lon"], cell_seed["lat"]), mountain_features)
@@ -592,9 +775,20 @@ def enrich_cell(cell_seed, stations, hazard_features, climate_features, mountain
     cell_seed["constructionIndex"] = metrics["constructionIndex"]
     cell_seed["constructionLabel"] = construction_label(metrics["constructionIndex"])
     cell_seed["satelliteMetrics"] = metrics
+    cell_seed["thermalMetrics"] = thermal_metrics
+    cell_seed["hybridHeatIndex"] = thermal_metrics["hybridHeatIndex"]
+    cell_seed["hybridHeatLabel"] = thermal_metrics["hybridHeatLabel"]
+    cell_seed["hybridTempC"] = thermal_metrics["hybridTempC"]
+    cell_seed["apparentTempC"] = thermal_metrics["apparentTempC"]
+    cell_seed["surfaceTempC"] = thermal_metrics["surfaceTempC"]
+    cell_seed["airTempMaxC"] = thermal_metrics["airTempMaxC"]
+    cell_seed["relativeHumidity"] = thermal_metrics["relativeHumidity"]
+    cell_seed["windSpeedMs"] = thermal_metrics["windSpeedMs"]
+    cell_seed["earthSkinTempC"] = thermal_metrics["earthSkinTempC"]
+    cell_seed["surfaceAdjustmentC"] = thermal_metrics["surfaceAdjustmentC"]
     cell_seed["satellitePreview"] = preview_url
     cell_seed["priorityScore"] = priority_score(
-        cell_seed["frequency"],
+        cell_seed["hybridHeatIndex"],
         cell_seed["hazardLevel"],
         cell_seed["constructionIndex"],
     )
@@ -634,6 +828,9 @@ def main():
     climate = load_geojson(CLIMATE_FILE)
 
     station_seeds = [build_station_seed(feature) for feature in heatwave["features"]]
+    cell_seeds = grid_cells(boundary_feature)
+    power_cache = prefetch_power_metrics(station_seeds + cell_seeds)
+
     stations = run_parallel(
         station_seeds,
         lambda seed: enrich_station(
@@ -641,11 +838,11 @@ def main():
             hazard["features"],
             climate["features"],
             mountains["features"],
+            power_cache,
         ),
     )
     stations.sort(key=lambda item: item["name"])
 
-    cell_seeds = grid_cells(boundary_feature)
     cells = run_parallel(
         cell_seeds,
         lambda seed: enrich_cell(
@@ -654,13 +851,14 @@ def main():
             hazard["features"],
             climate["features"],
             mountains["features"],
+            power_cache,
         ),
     )
     cells.sort(key=lambda item: item["id"])
 
     ranked_cells = sorted(
         cells,
-        key=lambda item: (-item["priorityScore"], -item["constructionIndex"], -item["frequency"]),
+        key=lambda item: (-item["priorityScore"], -item["hybridHeatIndex"], -item["constructionIndex"]),
     )
 
     output = {
@@ -671,9 +869,17 @@ def main():
             "sizePx": IMAGE_SIZE,
             "gridSpacingKm": GRID_SPACING_KM,
             "heatInterpolation": "IDW sobre estaciones SENAMHI de Lima",
+            "officialHeatBase": "Frecuencia de olas de calor de SENAMHI",
+            "surfaceTemperatureLayer": "NASA GIBS WMS MODIS_Terra_Land_Surface_Temp_Day",
+            "powerClimatology": "NASA POWER climatologia 2001-2020 para T2M_MAX, RH2M, WS2M y TS",
             "rule": (
                 "Indice constructivo estimado con NDBI de Sentinel-2, apoyado por mascaras "
                 "espectrales de vegetacion y agua para resaltar superficie edificada."
+            ),
+            "thermalRule": (
+                "Indice termico hibrido = 0.55 frecuencia SENAMHI + 0.25 sensacion termica "
+                "(T2M_MAX, RH2M y WS2M de NASA POWER) + 0.20 temperatura superficial refinada "
+                "(TS de NASA POWER ajustada con NDBI y vegetacion de Sentinel-2)."
             ),
         },
         "region": {

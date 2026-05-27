@@ -7,10 +7,10 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <meta name="build-version" content="__BUILD_VERSION__">
-    <title>Geoportal térmico-urbanístico de Lima</title>
+    <title>Geoportal termico-urbanistico de Lima</title>
     <meta
       name="description"
-      content="Visor geoespacial para Lima con resultados locales de índice constructivo calculados desde imagen satelital y cruces térmicos para Lima."
+      content="Visor geoespacial para Lima con frecuencia oficial SENAMHI, temperatura superficial satelital y un indice termico hibrido para toda la region."
     >
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,9 +33,9 @@
           <p class="eyebrow">Región Lima · análisis urbanístico y calor</p>
           <h1>Geoportal térmico-urbanístico para toda la región Lima</h1>
           <p class="hero-text">
-            Cruza estaciones de calor de SENAMHI con vulnerabilidad climática futura
-            y un índice constructivo calculado localmente con NDBI de Sentinel-2.
-            Los resultados ahora cubren toda la región Lima mediante una malla regional.
+            Mantiene la frecuencia oficial de olas de calor de SENAMHI, suma una capa satelital de
+            temperatura superficial y calcula un indice termico hibrido con humedad, viento,
+            temperatura maxima y refinamiento urbano desde Sentinel-2 para toda la region Lima.
           </p>
           <div class="hero-actions">
             <button id="open-left-panel" class="hud-button" type="button" aria-expanded="false">
@@ -55,7 +55,7 @@
                 <strong id="hero-cell-count">--</strong>
               </article>
               <article class="hero-mini">
-                <span class="hero-mini-label">Pico térmico</span>
+                <span class="hero-mini-label">Pico hibrido</span>
                 <strong id="hero-peak-heat">--</strong>
               </article>
               <article class="hero-mini">
@@ -73,8 +73,9 @@
           </section>
           <div class="hero-badges">
             <span>SENAMHI</span>
+            <span>NASA POWER</span>
+            <span>NASA GIBS</span>
             <span>ICL</span>
-            <span>GeoIDEP</span>
             <span>IGN</span>
             <span>Lima</span>
           </div>
@@ -101,14 +102,21 @@
                 <input type="checkbox" id="toggle-heatwave" checked>
                 <span class="toggle-main">
                   <strong>Estaciones de calor observadas</strong>
-                  <small>SENAMHI · frecuencia de verano usada como base térmica</small>
+                  <small>SENAMHI · frecuencia oficial de verano usada como base termica</small>
                 </span>
               </label>
               <label class="toggle-card">
                 <input type="checkbox" id="toggle-hazard" checked>
                 <span class="toggle-main">
                   <strong>Malla regional de análisis</strong>
-                  <small>Celdas de toda la región Lima calculadas localmente con NDBI de Sentinel-2</small>
+                  <small>Celdas regionales con indice termico hibrido y NDBI de Sentinel-2</small>
+                </span>
+              </label>
+              <label class="toggle-card">
+                <input type="checkbox" id="toggle-surface-temp">
+                <span class="toggle-main">
+                  <strong>Temperatura superficial satelital</strong>
+                  <small>NASA GIBS · MODIS Terra Land Surface Temperature diaria</small>
                 </span>
               </label>
               <label class="toggle-card">
@@ -166,10 +174,10 @@
               <h2>Notas de lectura</h2>
             </div>
             <ul class="notes-list">
-              <li>El índice constructivo usa NDBI de Sentinel-2 sobre una malla regional.</li>
-              <li>La prioridad combina calor interpolado, vulnerabilidad térmica y ocupación construida.</li>
-              <li>Vegetación y agua se limpian con máscaras espectrales para no inflar el construido.</li>
-              <li>La capa de montaña sigue siendo contexto territorial, no reemplaza un DEM o pendiente.</li>
+              <li>La frecuencia de olas de calor de SENAMHI se mantiene como base oficial del analisis.</li>
+              <li>La sensacion termica hibrida combina T2M_MAX, RH2M, WS2M y TS de NASA POWER.</li>
+              <li>El patron espacial se refina con NDBI, vegetacion y agua de Sentinel-2.</li>
+              <li>La capa satelital de temperatura superficial usa NASA GIBS con MODIS Terra LST.</li>
             </ul>
           </section>
         </aside>
@@ -187,7 +195,7 @@
               </div>
               <strong id="focus-title">Lima y sus contrastes térmicos</strong>
               <p id="focus-description">
-                El panel resalta celdas regionales de calor y el índice constructivo calculado con NDBI.
+                El panel resalta celdas regionales con frecuencia oficial, termica hibrida y NDBI.
               </p>
             </div>
           </div>
@@ -201,8 +209,8 @@
                 <button id="hide-risk-window" class="overlay-dismiss" type="button">Cerrar</button>
               </div>
               <p id="risk-window-summary" class="risk-summary">
-                Haz clic sobre una celda o sobre el ranking para ver el riesgo integrado, sus numeros base y una
-                propuesta de respuesta urbanistica.
+                Haz clic sobre una celda o sobre el ranking para ver la frecuencia oficial SENAMHI, la lectura
+                termica hibrida, la temperatura superficial y una propuesta de respuesta urbanistica.
               </p>
               <div id="risk-window-metrics" class="risk-metric-grid"></div>
               <div class="risk-card-section">
@@ -218,7 +226,7 @@
             <div class="legend-card">
               <h3>Leyenda rápida</h3>
               <div class="legend-group">
-                <p>Frecuencia térmica</p>
+                <p>Frecuencia SENAMHI</p>
                 <span><i class="dot freq-low"></i> Baja</span>
                 <span><i class="dot freq-medium"></i> Media</span>
                 <span><i class="dot freq-high"></i> Alta</span>
@@ -276,7 +284,7 @@
                 <strong id="metric-risk">--</strong>
               </article>
               <article class="metric-card">
-                <span class="metric-label">Calor máximo</span>
+                <span class="metric-label">Sensacion max.</span>
                 <strong id="metric-peak">--</strong>
               </article>
               <article class="metric-card">
@@ -289,7 +297,7 @@
           <section class="section-block">
             <div class="section-heading">
               <h2>Sectores prioritarios</h2>
-              <p>Cruce entre calor, vulnerabilidad y ocupación construida.</p>
+              <p>Cruce entre frecuencia oficial, termica hibrida, vulnerabilidad y ocupacion construida.</p>
             </div>
             <div id="ranking-list" class="ranking-list"></div>
           </section>
