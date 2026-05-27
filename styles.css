@@ -356,6 +356,11 @@ textarea {
   bottom: 18px;
 }
 
+.map-overlay.bottom-right {
+  right: 18px;
+  bottom: 18px;
+}
+
 .overlay-card,
 .legend-card {
   max-width: min(360px, calc(100vw - 72px));
@@ -366,6 +371,44 @@ textarea {
   color: #fff7ee;
   box-shadow: 0 12px 34px rgba(20, 28, 28, 0.24);
   backdrop-filter: blur(14px);
+}
+
+.basemap-switcher {
+  display: inline-flex;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 18px;
+  background: rgba(20, 28, 28, 0.78);
+  box-shadow: 0 12px 34px rgba(20, 28, 28, 0.24);
+  backdrop-filter: blur(14px);
+}
+
+.basemap-button {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 247, 238, 0.84);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.basemap-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(245, 199, 157, 0.45);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff8ee;
+}
+
+.basemap-button.is-active {
+  border-color: rgba(245, 199, 157, 0.58);
+  background: rgba(245, 199, 157, 0.18);
+  color: #fff8ee;
 }
 
 .map-overlay.top-left.is-collapsed .overlay-card {
@@ -1193,6 +1236,11 @@ body {
   bottom: 14px;
 }
 
+.map-overlay.bottom-right {
+  right: 14px;
+  bottom: 14px;
+}
+
 .overlay-card,
 .legend-card {
   max-width: min(360px, calc(100vw - 28px));
@@ -1232,6 +1280,11 @@ body {
   }
 
   .map-overlay.bottom-left {
+    bottom: 12px;
+  }
+
+  .map-overlay.bottom-right {
+    right: 12px;
     bottom: 12px;
   }
 }
@@ -1281,6 +1334,11 @@ body {
   .map-overlay.top-left,
   .leaflet-top.leaflet-right {
     top: 126px;
+  }
+
+  .map-overlay.bottom-right {
+    right: 12px;
+    bottom: 12px;
   }
 }
 
@@ -1346,9 +1404,26 @@ body {
     bottom: 10px;
   }
 
+  .map-overlay.bottom-right {
+    left: 10px;
+    right: 10px;
+    bottom: 82px;
+  }
+
   .overlay-card,
   .legend-card {
     width: 100%;
     max-width: none;
+  }
+
+  .basemap-switcher {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .basemap-button {
+    flex: 1 1 0;
+    justify-content: center;
+    text-align: center;
   }
 }

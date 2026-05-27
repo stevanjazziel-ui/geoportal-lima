@@ -70,6 +70,8 @@ const state = {
   stationById: new Map(),
   sortedByPriority: [],
   activeDrawer: null,
+  baseLayers: new Map(),
+  activeBaseLayerKey: "imagery",
 };
 
 const dom = {};
@@ -80,6 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
   wirePanelDrawers();
   wireFocusOverlay();
   initMap();
+  wireBaseMapSwitcher();
   wireToggles();
   loadPreparedData();
   window.addEventListener("resize", scheduleMapResize);
@@ -93,6 +96,8 @@ function cacheDom() {
   dom.openRightPanel = document.getElementById("open-right-panel");
   dom.closeLeftPanel = document.getElementById("close-left-panel");
   dom.closeRightPanel = document.getElementById("close-right-panel");
+  dom.baseImagery = document.getElementById("base-imagery");
+  dom.baseLight = document.getElementById("base-light");
   dom.metricPoints = document.getElementById("metric-points");
   dom.metricRisk = document.getElementById("metric-risk");
   dom.metricPeak = document.getElementById("metric-peak");
@@ -166,20 +171,19 @@ function initMap() {
     layers: [imageryBase],
     zoomControl: true,
   });
-
-  L.control
-    .layers(
-      {
-        "Imagen satelital": imageryBase,
-        "Base clara": lightBase,
-      },
-      {},
-      { position: "topright", collapsed: false }
-    )
-    .addTo(state.map);
+  state.baseLayers.set("imagery", imageryBase);
+  state.baseLayers.set("light", lightBase);
 
   state.map.fitBounds(LIMA_BOUNDS, { padding: [18, 18] });
   scheduleMapResize();
+}
+
+function wireBaseMapSwitcher() {
+  if (!dom.baseImagery || !dom.baseLight) return;
+
+  dom.baseImagery.addEventListener("click", () => setBaseMap("imagery"));
+  dom.baseLight.addEventListener("click", () => setBaseMap("light"));
+  syncBaseMapButtons();
 }
 
 function wireToggles() {
@@ -423,6 +427,27 @@ function toggleLeafletLayer(layer, visible) {
     state.map.removeLayer(layer);
   }
   scheduleMapResize();
+}
+
+function setBaseMap(key) {
+  if (!state.map || state.activeBaseLayerKey === key) return;
+
+  const nextLayer = state.baseLayers.get(key);
+  const currentLayer = state.baseLayers.get(state.activeBaseLayerKey);
+  if (!nextLayer) return;
+
+  if (currentLayer && state.map.hasLayer(currentLayer)) {
+    state.map.removeLayer(currentLayer);
+  }
+
+  nextLayer.addTo(state.map);
+  state.activeBaseLayerKey = key;
+  syncBaseMapButtons();
+}
+
+function syncBaseMapButtons() {
+  dom.baseImagery?.classList.toggle("is-active", state.activeBaseLayerKey === "imagery");
+  dom.baseLight?.classList.toggle("is-active", state.activeBaseLayerKey === "light");
 }
 
 function updateMetrics() {
