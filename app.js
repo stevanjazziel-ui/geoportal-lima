@@ -61,6 +61,15 @@ const HAZARD_ORDER = {
   "Sin dato": 0,
 };
 
+const esriSatelliteNativeZoomLevels = {
+  stable: 17,
+};
+
+// Same stable overzoom pattern used in the crops geoportal.
+function getEsriSatelliteNativeZoom() {
+  return esriSatelliteNativeZoomLevels.stable;
+}
+
 const TRANSPARENT_TILE_DATA_URI =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 
@@ -154,13 +163,16 @@ function wireFocusOverlay() {
 
 function initMap() {
   const imageryBase = L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false",
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     {
       attribution:
         "Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community",
       errorTileUrl: TRANSPARENT_TILE_DATA_URI,
-      maxNativeZoom: 17,
+      maxNativeZoom: getEsriSatelliteNativeZoom(),
       maxZoom: 19,
+      updateWhenIdle: true,
+      updateWhenZooming: false,
+      keepBuffer: 4,
     }
   );
 
