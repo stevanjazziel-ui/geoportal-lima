@@ -360,6 +360,9 @@ function drawHeatStations() {
     const latLng = [station.lat, station.lon];
     const frequencyColor = getFrequencyColor(station.frequency);
     const frequencyBand = getFrequencyBand(station.frequency);
+    const hybridIndex = Number(station.hybridHeatIndex || 0);
+    const hybridColor = getHybridColor(hybridIndex);
+    const hybridBand = getHybridBand(hybridIndex);
     const popupHtml = buildStationPopupHtml(station);
 
     const buffer = L.circle(latLng, {
@@ -384,16 +387,16 @@ function drawHeatStations() {
     });
 
     const marker = L.circleMarker(latLng, {
-      radius: 4.6 + station.frequency * 4.4,
+      radius: 4.4 + hybridIndex * 5.2,
       color: "#fff8ee",
       weight: 1.8,
-      fillColor: frequencyColor,
+      fillColor: hybridColor,
       fillOpacity: 0.96,
-      className: `station-core station-${frequencyBand}`,
+      className: `station-core station-${frequencyBand} station-hybrid-${hybridBand}`,
     });
 
     const nucleus = L.circleMarker(latLng, {
-      radius: 1.8 + station.frequency * 1.2,
+      radius: 1.7 + hybridIndex * 1.6,
       color: "#163132",
       weight: 0,
       fillColor: "#fffaf2",
@@ -930,6 +933,20 @@ function getFrequencyBand(frequency) {
   if (frequency >= 1.2) return "extreme";
   if (frequency >= 0.9) return "high";
   if (frequency >= 0.6) return "medium";
+  return "low";
+}
+
+function getHybridColor(index) {
+  if (index >= 0.72) return "#c8372d";
+  if (index >= 0.54) return "#ea7b34";
+  if (index >= 0.36) return "#efb43e";
+  return "#2d8dbf";
+}
+
+function getHybridBand(index) {
+  if (index >= 0.72) return "extreme";
+  if (index >= 0.54) return "high";
+  if (index >= 0.36) return "medium";
   return "low";
 }
 

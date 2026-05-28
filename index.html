@@ -30,7 +30,7 @@
     <div class="app-shell">
       <header class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Región Lima · análisis urbanístico y calor</p>
+          <p class="eyebrow">Región Lima · análisis urbanístico y estrés térmico</p>
           <h1>Geoportal térmico-urbanístico para toda la región Lima</h1>
           <p class="hero-text">
             Mantiene la frecuencia oficial de olas de calor de SENAMHI, suma una capa satelital de
@@ -101,7 +101,7 @@
               <label class="toggle-card">
                 <input type="checkbox" id="toggle-heatwave" checked>
                 <span class="toggle-main">
-                  <strong>Estaciones de calor observadas</strong>
+                  <strong>Estaciones SENAMHI observadas</strong>
                   <small>SENAMHI · frecuencia oficial de verano usada como base termica</small>
                 </span>
               </label>
@@ -216,8 +216,8 @@
               <div class="risk-card-section">
                 <p class="risk-card-label">Propuesta de respuesta</p>
                 <p id="risk-window-solution" class="risk-card-text">
-                  La recomendacion se generara automaticamente segun calor, vulnerabilidad, ocupacion construida y
-                  contexto territorial.
+                  La recomendacion se generara automaticamente segun frecuencia oficial, lectura termica hibrida,
+                  ocupacion construida y contexto territorial.
                 </p>
               </div>
             </article>
@@ -231,7 +231,15 @@
                 <span><i class="dot freq-medium"></i> Media</span>
                 <span><i class="dot freq-high"></i> Alta</span>
                 <span><i class="dot freq-extreme"></i> Muy alta</span>
-                <span><i class="ring-swatch"></i> Halo y buffer de influencia</span>
+                <span><i class="ring-swatch"></i> Halo y buffer de influencia oficial</span>
+              </div>
+              <div class="legend-group">
+                <p>Lectura térmica híbrida</p>
+                <span><i class="dot thermal-low"></i> Baja</span>
+                <span><i class="dot thermal-medium"></i> Media</span>
+                <span><i class="dot thermal-high"></i> Alta</span>
+                <span><i class="dot thermal-extreme"></i> Muy alta</span>
+                <span><i class="core-swatch"></i> Núcleo sólido de la estación</span>
               </div>
               <div class="legend-group">
                 <p>Multipeligro climático</p>
@@ -247,6 +255,9 @@
                 <span><i class="swatch build-high"></i> Alto</span>
                 <span><i class="swatch build-extreme"></i> Muy alto</span>
               </div>
+              <p class="legend-note">
+                Halo = frecuencia oficial SENAMHI. Núcleo = lectura térmica híbrida. Paneles = frecuencia, superficie y recomendación.
+              </p>
             </div>
           </div>
           <div class="map-overlay bottom-right">
