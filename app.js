@@ -98,6 +98,7 @@ const state = {
   map: null,
   boundaryLayer: null,
   cellLayer: null,
+  hybridHotspotLayer: null,
   stationLayer: null,
   rankingPinsLayer: null,
   mountainLayer: null,
@@ -242,6 +243,7 @@ function wireBaseMapSwitcher() {
 function wireToggles() {
   bindToggle("toggle-heatwave", (checked) => toggleLeafletLayer(state.stationLayer, checked));
   bindToggle("toggle-hazard", (checked) => toggleLeafletLayer(state.cellLayer, checked));
+  bindToggle("toggle-hybrid-hotspots", (checked) => toggleLeafletLayer(state.hybridHotspotLayer, checked));
   bindToggle("toggle-climate", (checked) => toggleRemoteLayer("climate", checked));
   bindToggle("toggle-surface-temp", (checked) => toggleRemoteLayer("surfaceTemp", checked));
   bindToggle("toggle-construction", (checked) => toggleRemoteLayer("construction", checked));
@@ -283,6 +285,7 @@ function loadPreparedData() {
 
   drawRegionBoundary();
   drawRegionalCells();
+  drawHybridHotspots();
   drawHeatStations();
   drawRankingPins();
   renderSources();
@@ -292,7 +295,7 @@ function loadPreparedData() {
   updateFocusCard();
   scheduleMapResize();
   setStatus(
-    `Resultados listos. Se analizaron ${prepared.cells.length} celdas con frecuencia oficial SENAMHI, termica hibrida y ${prepared.stations.length} estaciones base.`,
+    `Resultados listos. Se analizaron ${prepared.cells.length} celdas con frecuencia oficial SENAMHI, hotspots termicos hibridos y ${prepared.stations.length} estaciones base.`,
     "ok"
   );
 
@@ -350,6 +353,61 @@ function drawRegionalCells() {
   });
 
   state.cellLayer.addTo(state.map);
+}
+
+// Soft territorial hotspot layer so the hybrid thermal signal is legible before opening panels.
+function drawHybridHotspots() {
+  state.hybridHotspotLayer = L.layerGroup();
+
+  state.data.cells.forEach((cell) => {
+    const hybridIndex = getHybridHeatIndex(cell);
+    const surfaceTempC = getSurfaceTempC(cell);
+
+    if (hybridIndex < 0.16 && surfaceTempC < 24.5) return;
+
+    const latLng = [cell.lat, cell.lon];
+    const color = getHybridColor(hybridIndex);
+    const band = getHybridBand(hybridIndex);
+    const popupHtml = buildCellPopupHtml(cell);
+
+    const glow = L.circleMarker(latLng, {
+      radius: getHybridHotspotGlowRadius(hybridIndex, surfaceTempC),
+      stroke: false,
+      fillColor: color,
+      fillOpacity: getHybridHotspotGlowOpacity(hybridIndex),
+      interactive: false,
+      className: `cell-hotspot-glow hotspot-${band}`,
+    });
+
+    const ring = L.circleMarker(latLng, {
+      radius: getHybridHotspotRingRadius(hybridIndex, surfaceTempC),
+      color,
+      weight: 1 + hybridIndex * 1.1,
+      opacity: 0.42 + hybridIndex * 0.42,
+      fillColor: color,
+      fillOpacity: 0.1 + hybridIndex * 0.18,
+      className: `cell-hotspot-ring hotspot-${band}`,
+    });
+
+    const core = L.circleMarker(latLng, {
+      radius: getHybridHotspotCoreRadius(surfaceTempC),
+      color: "#fffaf2",
+      weight: 1,
+      opacity: 0.92,
+      fillColor: color,
+      fillOpacity: 0.9,
+      className: `cell-hotspot-core hotspot-${band}`,
+    });
+
+    [ring, core].forEach((layer) => {
+      layer.bindPopup(popupHtml);
+      layer.on("click", () => showRiskWindowForCell(cell));
+    });
+
+    [glow, ring, core].forEach((layer) => state.hybridHotspotLayer.addLayer(layer));
+  });
+
+  state.hybridHotspotLayer.addTo(state.map);
 }
 
 function drawHeatStations() {
@@ -591,6 +649,7 @@ function updateFocusCard() {
     `${topPriority.name} alcanza prioridad ${topPriority.priorityScore.toFixed(2)}, frecuencia oficial ${Number(
       topPriority.frequency || 0
     ).toFixed(2)} y sensacion hibrida ${Number(topPriority.hybridTempC || 0).toFixed(1)}°C. ` +
+    `Su hotspot territorial queda visible sobre el mapa. ` +
     `${topConstruction.name} muestra el mayor indice constructivo regional (${topConstruction.constructionIndex.toFixed(
       2
     )}).`;
@@ -948,6 +1007,22 @@ function getHybridBand(index) {
   if (index >= 0.54) return "high";
   if (index >= 0.36) return "medium";
   return "low";
+}
+
+function getHybridHotspotGlowRadius(index, surfaceTempC) {
+  return 10 + index * 17 + Math.max(0, surfaceTempC - 24) * 0.45;
+}
+
+function getHybridHotspotGlowOpacity(index) {
+  return 0.06 + index * 0.14;
+}
+
+function getHybridHotspotRingRadius(index, surfaceTempC) {
+  return 4.6 + index * 7.2 + Math.max(0, surfaceTempC - 24) * 0.18;
+}
+
+function getHybridHotspotCoreRadius(surfaceTempC) {
+  return 1.8 + Math.max(0, surfaceTempC - 24) * 0.12;
 }
 
 function getStationBufferRadiusMeters(frequency) {

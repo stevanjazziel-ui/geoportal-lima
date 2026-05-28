@@ -625,7 +625,8 @@ textarea {
 }
 
 .dot,
-.swatch {
+.swatch,
+.glow-swatch {
   display: inline-block;
   flex: 0 0 auto;
 }
@@ -652,6 +653,18 @@ textarea {
   background: #ea7b34;
   border: 2px solid rgba(255, 248, 238, 0.92);
   box-shadow: 0 0 0 3px rgba(234, 123, 52, 0.18);
+}
+
+.glow-swatch {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  opacity: 0.95;
+  box-shadow:
+    0 0 0 2px rgba(255, 248, 238, 0.14),
+    0 0 10px currentColor,
+    0 0 18px currentColor;
 }
 
 .dot {
@@ -684,18 +697,22 @@ textarea {
 
 .thermal-low {
   background: #2d8dbf;
+  color: #2d8dbf;
 }
 
 .thermal-medium {
   background: #efb43e;
+  color: #efb43e;
 }
 
 .thermal-high {
   background: #ea7b34;
+  color: #ea7b34;
 }
 
 .thermal-extreme {
   background: #c8372d;
+  color: #c8372d;
 }
 
 .hazard-low {

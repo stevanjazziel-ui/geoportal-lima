@@ -113,6 +113,13 @@
                 </span>
               </label>
               <label class="toggle-card">
+                <input type="checkbox" id="toggle-hybrid-hotspots" checked>
+                <span class="toggle-main">
+                  <strong>Hotspots térmicos híbridos</strong>
+                  <small>Aureolas territoriales que sintetizan sensación térmica y superficie satelital</small>
+                </span>
+              </label>
+              <label class="toggle-card">
                 <input type="checkbox" id="toggle-surface-temp">
                 <span class="toggle-main">
                   <strong>Temperatura superficial satelital</strong>
@@ -176,6 +183,7 @@
             <ul class="notes-list">
               <li>La frecuencia de olas de calor de SENAMHI se mantiene como base oficial del analisis.</li>
               <li>La sensacion termica hibrida combina T2M_MAX, RH2M, WS2M y TS de NASA POWER.</li>
+              <li>Los hotspots hibridos muestran donde esa señal termica ya se vuelve territorialmente dominante.</li>
               <li>El patron espacial se refina con NDBI, vegetacion y agua de Sentinel-2.</li>
               <li>La capa satelital de temperatura superficial usa NASA GIBS con MODIS Terra LST.</li>
             </ul>
@@ -242,6 +250,13 @@
                 <span><i class="core-swatch"></i> Núcleo sólido de la estación</span>
               </div>
               <div class="legend-group">
+                <p>Hotspots híbridos de celda</p>
+                <span><i class="glow-swatch thermal-low"></i> Baja</span>
+                <span><i class="glow-swatch thermal-medium"></i> Media</span>
+                <span><i class="glow-swatch thermal-high"></i> Alta</span>
+                <span><i class="glow-swatch thermal-extreme"></i> Muy alta</span>
+              </div>
+              <div class="legend-group">
                 <p>Multipeligro climático</p>
                 <span><i class="swatch hazard-low"></i> Bajo</span>
                 <span><i class="swatch hazard-medium"></i> Medio</span>
@@ -256,7 +271,7 @@
                 <span><i class="swatch build-extreme"></i> Muy alto</span>
               </div>
               <p class="legend-note">
-                Halo = frecuencia oficial SENAMHI. Núcleo = lectura térmica híbrida. Paneles = frecuencia, superficie y recomendación.
+                Halo = frecuencia oficial SENAMHI. Núcleo = lectura térmica híbrida de estación. Mancha = estrés térmico territorial por celda.
               </p>
             </div>
           </div>
