@@ -28,14 +28,46 @@
   </head>
   <body>
     <div class="app-shell">
+      <header class="social-chrome">
+        <div class="social-bar">
+          <div class="social-avatar">GL</div>
+          <div class="social-search" aria-label="Busqueda referencial">
+            <span class="social-search-icon">Q</span>
+            <span>Buscar sectores, estaciones y capas</span>
+          </div>
+          <div class="social-actions" aria-hidden="true">
+            <span class="social-chip">Lima</span>
+            <span class="social-dot">...</span>
+          </div>
+        </div>
+        <div class="social-recommendation">
+          <div class="recommendation-avatar">AN</div>
+          <div class="recommendation-copy">
+            <strong>Geoportal Lima Analytics</strong>
+            <span>Scoring territorial, calor urbano y lectura regional integrada</span>
+          </div>
+          <span class="recommendation-action">Panel en vivo</span>
+        </div>
+      </header>
+
       <header class="hero">
+        <div class="post-head">
+          <div class="post-brand">
+            <div class="post-brand-mark">GL</div>
+            <div class="post-brand-copy">
+              <p class="eyebrow">Region Lima · scoring territorial y calor urbano</p>
+              <p class="post-brand-meta">Mapa, prioridad y lectura ejecutiva en una sola interfaz</p>
+            </div>
+          </div>
+          <span class="post-brand-action">+ Priorizar</span>
+        </div>
+
         <div class="hero-copy">
-          <p class="eyebrow">Región Lima · análisis urbanístico y estrés térmico</p>
-          <h1>Geoportal térmico-urbanístico para toda la región Lima</h1>
+          <h1>Scoring territorial y econometria espacial para toda la region Lima</h1>
           <p class="hero-text">
-            Mantiene la frecuencia oficial de olas de calor de SENAMHI, suma una capa satelital de
-            temperatura superficial y calcula un indice termico hibrido con humedad, viento,
-            temperatura maxima y refinamiento urbano desde Sentinel-2 para toda la region Lima.
+            Mantiene la frecuencia oficial de olas de calor de SENAMHI, suma temperatura
+            superficial satelital y calcula un indice termico hibrido con humedad, viento,
+            temperatura maxima y refinamiento urbano desde Sentinel-2.
           </p>
           <div class="hero-actions">
             <button id="open-left-panel" class="hud-button" type="button" aria-expanded="false">
@@ -46,6 +78,7 @@
             </button>
           </div>
         </div>
+
         <div class="hero-side">
           <section class="hero-summary">
             <p class="hero-summary-label">Pulso regional</p>
@@ -63,39 +96,164 @@
                 <strong id="hero-top-sector">--</strong>
               </article>
               <article class="hero-mini">
-                <span class="hero-mini-label">Estación guía</span>
+                <span class="hero-mini-label">Estacion guia</span>
                 <strong id="hero-top-station">--</strong>
               </article>
             </div>
             <p id="hero-summary-note" class="hero-summary-note">
-              Resumen regional cargando…
+              Resumen regional cargando...
             </p>
           </section>
           <div class="hero-badges">
             <span>SENAMHI</span>
             <span>NASA POWER</span>
             <span>NASA GIBS</span>
+            <span>Sentinel-2</span>
             <span>ICL</span>
             <span>IGN</span>
-            <span>Lima</span>
           </div>
         </div>
       </header>
 
       <main class="workspace">
         <button id="panel-backdrop" class="panel-backdrop" type="button" aria-label="Cerrar paneles"></button>
+
+        <section class="map-stage">
+          <div id="map"></div>
+
+          <div class="map-stage-copy">
+            <p class="map-stage-kicker">Scoring territorial y econometria espacial</p>
+            <h2>Del mapa a la priorizacion avanzada de zonas termicas</h2>
+            <p>
+              Combinamos scoring territorial con lectura climatica oficial y temperatura satelital
+              para entender relaciones entre sectores y decidir donde intervenir primero.
+            </p>
+          </div>
+
+          <div id="focus-overlay" class="map-overlay top-left is-collapsed">
+            <button id="show-focus-overlay" class="overlay-toggle overlay-toggle-show" type="button">
+              Mostrar enfoque
+            </button>
+            <div class="overlay-card">
+              <div class="overlay-card-header">
+                <p class="overlay-label">Enfoque del visor</p>
+                <button id="hide-focus-overlay" class="overlay-dismiss" type="button">Ocultar</button>
+              </div>
+              <strong id="focus-title">Lima y sus contrastes termicos</strong>
+              <p id="focus-description">
+                El panel resalta celdas regionales con frecuencia oficial, termica hibrida y NDBI.
+              </p>
+            </div>
+          </div>
+
+          <div id="risk-window" class="map-overlay top-right risk-window is-hidden">
+            <article id="risk-window-card" class="risk-card" data-tone="neutral">
+              <div class="risk-card-header">
+                <div>
+                  <p class="overlay-label">Riesgo del sector</p>
+                  <strong id="risk-window-title">Selecciona un sector analizado</strong>
+                </div>
+                <button id="hide-risk-window" class="overlay-dismiss" type="button">Cerrar</button>
+              </div>
+              <p id="risk-window-summary" class="risk-summary">
+                Haz clic sobre una celda o sobre el ranking para ver la frecuencia oficial SENAMHI,
+                la lectura termica hibrida, la temperatura superficial y una propuesta de respuesta
+                urbanistica.
+              </p>
+              <div id="risk-window-metrics" class="risk-metric-grid"></div>
+              <div class="risk-card-section">
+                <p class="risk-card-label">Propuesta de respuesta</p>
+                <p id="risk-window-solution" class="risk-card-text">
+                  La recomendacion se generara automaticamente segun frecuencia oficial, lectura
+                  termica hibrida, ocupacion construida y contexto territorial.
+                </p>
+              </div>
+            </article>
+          </div>
+
+          <div class="map-overlay bottom-left">
+            <div class="legend-card">
+              <h3>Leyenda rapida</h3>
+              <div class="legend-group">
+                <p>Frecuencia SENAMHI</p>
+                <span><i class="dot freq-low"></i> Baja</span>
+                <span><i class="dot freq-medium"></i> Media</span>
+                <span><i class="dot freq-high"></i> Alta</span>
+                <span><i class="dot freq-extreme"></i> Muy alta</span>
+                <span><i class="ring-swatch"></i> Halo y buffer de influencia oficial</span>
+              </div>
+              <div class="legend-group">
+                <p>Lectura termica hibrida</p>
+                <span><i class="dot thermal-low"></i> Baja</span>
+                <span><i class="dot thermal-medium"></i> Media</span>
+                <span><i class="dot thermal-high"></i> Alta</span>
+                <span><i class="dot thermal-extreme"></i> Muy alta</span>
+                <span><i class="core-swatch"></i> Nucleo solido de la estacion</span>
+              </div>
+              <div class="legend-group">
+                <p>Hotspots hibridos de celda</p>
+                <span><i class="glow-swatch thermal-low"></i> Baja</span>
+                <span><i class="glow-swatch thermal-medium"></i> Media</span>
+                <span><i class="glow-swatch thermal-high"></i> Alta</span>
+                <span><i class="glow-swatch thermal-extreme"></i> Muy alta</span>
+              </div>
+              <div class="legend-group">
+                <p>Multipeligro climatico</p>
+                <span><i class="swatch hazard-low"></i> Bajo</span>
+                <span><i class="swatch hazard-medium"></i> Medio</span>
+                <span><i class="swatch hazard-high"></i> Alto</span>
+                <span><i class="swatch hazard-extreme"></i> Muy alto</span>
+              </div>
+              <div class="legend-group">
+                <p>Indice constructivo NDBI</p>
+                <span><i class="swatch build-low"></i> Bajo</span>
+                <span><i class="swatch build-medium"></i> Medio</span>
+                <span><i class="swatch build-high"></i> Alto</span>
+                <span><i class="swatch build-extreme"></i> Muy alto</span>
+              </div>
+              <p class="legend-note">
+                Halo = frecuencia oficial. Nucleo = lectura hibrida. Mancha = estres termico
+                territorial por celda.
+              </p>
+            </div>
+          </div>
+
+          <div class="map-overlay bottom-right">
+            <div class="basemap-switcher" role="group" aria-label="Cambiar mapa base">
+              <button id="base-imagery" class="basemap-button is-active" type="button">
+                Imagen satelital
+              </button>
+              <button id="base-light" class="basemap-button" type="button">
+                Base clara
+              </button>
+            </div>
+          </div>
+
+          <div class="map-stage-footer">
+            <div class="map-stage-pill">
+              <strong>Visualizar + priorizar + modelar</strong>
+              <span>Del dato a la decision territorial</span>
+            </div>
+            <div class="map-stage-pill">
+              <strong>Variables del scoring</strong>
+              <span>Frecuencia oficial, calor hibrido, NDBI y multipeligro</span>
+            </div>
+          </div>
+        </section>
+
         <aside class="panel panel-left">
           <div class="panel-drawer-head">
             <div>
               <p class="panel-drawer-kicker">Capas y contexto</p>
-              <strong>Exploración territorial</strong>
+              <strong>Exploracion territorial</strong>
             </div>
             <button id="close-left-panel" class="drawer-close" type="button">Cerrar</button>
           </div>
+
           <section class="section-block">
             <div class="section-heading">
               <h2>Capas activas</h2>
-              <p>Base analítica visible apenas abre el visor.</p>
+              <p>Base analitica visible apenas abre el visor.</p>
             </div>
             <div class="toggle-list">
               <label class="toggle-card">
@@ -108,15 +266,15 @@
               <label class="toggle-card">
                 <input type="checkbox" id="toggle-hazard" checked>
                 <span class="toggle-main">
-                  <strong>Malla regional de análisis</strong>
+                  <strong>Malla regional de analisis</strong>
                   <small>Celdas regionales con indice termico hibrido y NDBI de Sentinel-2</small>
                 </span>
               </label>
               <label class="toggle-card">
                 <input type="checkbox" id="toggle-hybrid-hotspots" checked>
                 <span class="toggle-main">
-                  <strong>Hotspots térmicos híbridos</strong>
-                  <small>Aureolas territoriales que sintetizan sensación térmica y superficie satelital</small>
+                  <strong>Hotspots termicos hibridos</strong>
+                  <small>Aureolas territoriales que sintetizan sensacion termica y superficie satelital</small>
                 </span>
               </label>
               <label class="toggle-card">
@@ -129,14 +287,14 @@
               <label class="toggle-card">
                 <input type="checkbox" id="toggle-mountains">
                 <span class="toggle-main">
-                  <strong>Zonas de montaña</strong>
-                  <small>Celdas serranas o de loma dentro de la región Lima</small>
+                  <strong>Zonas de montana</strong>
+                  <small>Celdas serranas o de loma dentro de la region Lima</small>
                 </span>
               </label>
               <label class="toggle-card">
                 <input type="checkbox" id="toggle-climate">
                 <span class="toggle-main">
-                  <strong>Clasificación climática</strong>
+                  <strong>Clasificacion climatica</strong>
                   <small>SENAMHI · WMS nacional</small>
                 </span>
               </label>
@@ -146,7 +304,7 @@
           <section class="section-block">
             <div class="section-heading">
               <h2>Capas urbanas ICL</h2>
-              <p>Capas opcionales de apoyo. El índice principal ya sale de Sentinel-2.</p>
+              <p>Capas opcionales de apoyo. El indice principal ya sale de Sentinel-2.</p>
             </div>
             <div class="toggle-list">
               <label class="toggle-card optional">
@@ -160,20 +318,27 @@
                 <input type="checkbox" id="toggle-blocks">
                 <span class="toggle-main">
                   <strong>Manzanas catastrales</strong>
-                  <small>ICL · patrón de tejido urbano</small>
+                  <small>ICL · patron de tejido urbano</small>
                 </span>
               </label>
               <label class="toggle-card optional">
                 <input type="checkbox" id="toggle-parks">
                 <span class="toggle-main">
-                  <strong>Áreas verdes</strong>
+                  <strong>Areas verdes</strong>
                   <small>ICL · infraestructura de enfriamiento urbano</small>
                 </span>
               </label>
             </div>
             <div id="icl-status" class="status-box">
-              Las capas del ICL son opcionales. El resultado principal ya está calculado localmente.
+              Las capas del ICL son opcionales. El resultado principal ya esta calculado localmente.
             </div>
+          </section>
+
+          <section class="section-block compact">
+            <div class="section-heading">
+              <h2>Fuentes</h2>
+            </div>
+            <ul id="source-list" class="source-list"></ul>
           </section>
 
           <section class="section-block compact">
@@ -183,109 +348,12 @@
             <ul class="notes-list">
               <li>La frecuencia de olas de calor de SENAMHI se mantiene como base oficial del analisis.</li>
               <li>La sensacion termica hibrida combina T2M_MAX, RH2M, WS2M y TS de NASA POWER.</li>
-              <li>Los hotspots hibridos muestran donde esa señal termica ya se vuelve territorialmente dominante.</li>
+              <li>Los hotspots hibridos muestran donde esa senal termica ya se vuelve territorialmente dominante.</li>
               <li>El patron espacial se refina con NDBI, vegetacion y agua de Sentinel-2.</li>
               <li>La capa satelital de temperatura superficial usa NASA GIBS con MODIS Terra LST.</li>
             </ul>
           </section>
         </aside>
-
-        <section class="map-stage">
-          <div id="map"></div>
-          <div id="focus-overlay" class="map-overlay top-left is-collapsed">
-            <button id="show-focus-overlay" class="overlay-toggle overlay-toggle-show" type="button">
-              Mostrar enfoque
-            </button>
-            <div class="overlay-card">
-              <div class="overlay-card-header">
-                <p class="overlay-label">Enfoque del visor</p>
-                <button id="hide-focus-overlay" class="overlay-dismiss" type="button">Ocultar</button>
-              </div>
-              <strong id="focus-title">Lima y sus contrastes térmicos</strong>
-              <p id="focus-description">
-                El panel resalta celdas regionales con frecuencia oficial, termica hibrida y NDBI.
-              </p>
-            </div>
-          </div>
-          <div id="risk-window" class="map-overlay top-right risk-window is-hidden">
-            <article id="risk-window-card" class="risk-card" data-tone="neutral">
-              <div class="risk-card-header">
-                <div>
-                  <p class="overlay-label">Riesgo del sector</p>
-                  <strong id="risk-window-title">Selecciona un sector analizado</strong>
-                </div>
-                <button id="hide-risk-window" class="overlay-dismiss" type="button">Cerrar</button>
-              </div>
-              <p id="risk-window-summary" class="risk-summary">
-                Haz clic sobre una celda o sobre el ranking para ver la frecuencia oficial SENAMHI, la lectura
-                termica hibrida, la temperatura superficial y una propuesta de respuesta urbanistica.
-              </p>
-              <div id="risk-window-metrics" class="risk-metric-grid"></div>
-              <div class="risk-card-section">
-                <p class="risk-card-label">Propuesta de respuesta</p>
-                <p id="risk-window-solution" class="risk-card-text">
-                  La recomendacion se generara automaticamente segun frecuencia oficial, lectura termica hibrida,
-                  ocupacion construida y contexto territorial.
-                </p>
-              </div>
-            </article>
-          </div>
-          <div class="map-overlay bottom-left">
-            <div class="legend-card">
-              <h3>Leyenda rápida</h3>
-              <div class="legend-group">
-                <p>Frecuencia SENAMHI</p>
-                <span><i class="dot freq-low"></i> Baja</span>
-                <span><i class="dot freq-medium"></i> Media</span>
-                <span><i class="dot freq-high"></i> Alta</span>
-                <span><i class="dot freq-extreme"></i> Muy alta</span>
-                <span><i class="ring-swatch"></i> Halo y buffer de influencia oficial</span>
-              </div>
-              <div class="legend-group">
-                <p>Lectura térmica híbrida</p>
-                <span><i class="dot thermal-low"></i> Baja</span>
-                <span><i class="dot thermal-medium"></i> Media</span>
-                <span><i class="dot thermal-high"></i> Alta</span>
-                <span><i class="dot thermal-extreme"></i> Muy alta</span>
-                <span><i class="core-swatch"></i> Núcleo sólido de la estación</span>
-              </div>
-              <div class="legend-group">
-                <p>Hotspots híbridos de celda</p>
-                <span><i class="glow-swatch thermal-low"></i> Baja</span>
-                <span><i class="glow-swatch thermal-medium"></i> Media</span>
-                <span><i class="glow-swatch thermal-high"></i> Alta</span>
-                <span><i class="glow-swatch thermal-extreme"></i> Muy alta</span>
-              </div>
-              <div class="legend-group">
-                <p>Multipeligro climático</p>
-                <span><i class="swatch hazard-low"></i> Bajo</span>
-                <span><i class="swatch hazard-medium"></i> Medio</span>
-                <span><i class="swatch hazard-high"></i> Alto</span>
-                <span><i class="swatch hazard-extreme"></i> Muy alto</span>
-              </div>
-              <div class="legend-group">
-                <p>Índice constructivo NDBI</p>
-                <span><i class="swatch build-low"></i> Bajo</span>
-                <span><i class="swatch build-medium"></i> Medio</span>
-                <span><i class="swatch build-high"></i> Alto</span>
-                <span><i class="swatch build-extreme"></i> Muy alto</span>
-              </div>
-              <p class="legend-note">
-                Halo = frecuencia oficial SENAMHI. Núcleo = lectura térmica híbrida de estación. Mancha = estrés térmico territorial por celda.
-              </p>
-            </div>
-          </div>
-          <div class="map-overlay bottom-right">
-            <div class="basemap-switcher" role="group" aria-label="Cambiar mapa base">
-              <button id="base-imagery" class="basemap-button is-active" type="button">
-                Imagen satelital
-              </button>
-              <button id="base-light" class="basemap-button" type="button">
-                Base clara
-              </button>
-            </div>
-          </div>
-        </section>
 
         <aside class="panel panel-right">
           <div class="panel-drawer-head">
@@ -295,10 +363,32 @@
             </div>
             <button id="close-right-panel" class="drawer-close" type="button">Cerrar</button>
           </div>
+
+          <section class="section-block emphasis">
+            <div class="section-heading">
+              <h2>Ranking de zonas</h2>
+              <p>Cruce entre frecuencia oficial, termica hibrida, vulnerabilidad y ocupacion construida.</p>
+            </div>
+            <div id="ranking-list" class="ranking-list"></div>
+          </section>
+
+          <section class="section-block compact">
+            <div class="section-heading">
+              <h2>Variables del scoring</h2>
+            </div>
+            <ul class="score-variable-list">
+              <li><span class="score-variable-icon">01</span><div><strong>Frecuencia oficial</strong><small>Base SENAMHI para recurrencia de olas de calor</small></div></li>
+              <li><span class="score-variable-icon">02</span><div><strong>Calor hibrido</strong><small>NASA POWER con humedad, viento y temperatura maxima</small></div></li>
+              <li><span class="score-variable-icon">03</span><div><strong>Temperatura superficial</strong><small>Lectura satelital diaria MODIS Terra LST</small></div></li>
+              <li><span class="score-variable-icon">04</span><div><strong>Indice NDBI</strong><small>Superficie construida refinada con Sentinel-2</small></div></li>
+              <li><span class="score-variable-icon">05</span><div><strong>Multipeligro</strong><small>Contexto de vulnerabilidad climatica regional</small></div></li>
+            </ul>
+          </section>
+
           <section class="section-block">
             <div class="section-heading">
               <h2>Resumen ejecutivo</h2>
-              <p>Lectura directa para priorizar territorio sobre toda la región.</p>
+              <p>Lectura directa para priorizar territorio sobre toda la region.</p>
             </div>
             <div class="metric-grid">
               <article class="metric-card">
@@ -314,35 +404,26 @@
                 <strong id="metric-peak">--</strong>
               </article>
               <article class="metric-card">
-                <span class="metric-label">Construcción media</span>
+                <span class="metric-label">Construccion media</span>
                 <strong id="metric-construction">--</strong>
               </article>
             </div>
-          </section>
-
-          <section class="section-block">
-            <div class="section-heading">
-              <h2>Sectores prioritarios</h2>
-              <p>Cruce entre frecuencia oficial, termica hibrida, vulnerabilidad y ocupacion construida.</p>
-            </div>
-            <div id="ranking-list" class="ranking-list"></div>
-          </section>
-
-          <section class="section-block compact">
-            <div class="section-heading">
-              <h2>Fuentes</h2>
-            </div>
-            <ul id="source-list" class="source-list"></ul>
           </section>
 
           <section class="section-block compact">
             <div class="section-heading">
               <h2>Estado</h2>
             </div>
-            <div id="app-status" class="status-box">Preparando resultados regionales de Lima…</div>
+            <div id="app-status" class="status-box">Preparando resultados regionales de Lima...</div>
           </section>
         </aside>
       </main>
+
+      <nav class="mobile-dock" aria-label="Accesos rapidos">
+        <button class="mobile-dock-button" type="button" data-dock-target="left">Capas</button>
+        <button class="mobile-dock-button is-primary" type="button" data-dock-target="map">Mapa</button>
+        <button class="mobile-dock-button" type="button" data-dock-target="right">Ranking</button>
+      </nav>
     </div>
 
     <script

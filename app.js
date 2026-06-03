@@ -132,6 +132,7 @@ function cacheDom() {
   dom.panelBackdrop = document.getElementById("panel-backdrop");
   dom.openLeftPanel = document.getElementById("open-left-panel");
   dom.openRightPanel = document.getElementById("open-right-panel");
+  dom.mobileDockButtons = [...document.querySelectorAll("[data-dock-target]")];
   dom.closeLeftPanel = document.getElementById("close-left-panel");
   dom.closeRightPanel = document.getElementById("close-right-panel");
   dom.baseImagery = document.getElementById("base-imagery");
@@ -170,8 +171,19 @@ function wirePanelDrawers() {
 
   dom.openLeftPanel.addEventListener("click", () => toggleDrawer("left"));
   dom.openRightPanel.addEventListener("click", () => toggleDrawer("right"));
+  dom.panelBackdrop?.addEventListener("click", () => setActiveDrawer(null));
   dom.closeLeftPanel?.addEventListener("click", () => setActiveDrawer(null));
   dom.closeRightPanel?.addEventListener("click", () => setActiveDrawer(null));
+  dom.mobileDockButtons?.forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = button.dataset.dockTarget;
+      if (target === "left" || target === "right") {
+        toggleDrawer(target);
+        return;
+      }
+      setActiveDrawer(null);
+    });
+  });
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
@@ -1095,6 +1107,14 @@ function setActiveDrawer(side) {
   dom.panelBackdrop?.classList.toggle("is-visible", hasOpenDrawer);
   dom.openLeftPanel?.classList.toggle("is-active", leftOpen);
   dom.openRightPanel?.classList.toggle("is-active", rightOpen);
+  dom.mobileDockButtons?.forEach((button) => {
+    const target = button.dataset.dockTarget;
+    const isActive =
+      (target === "left" && leftOpen) ||
+      (target === "right" && rightOpen) ||
+      (target === "map" && !hasOpenDrawer);
+    button.classList.toggle("is-active", isActive);
+  });
 
   if (dom.openLeftPanel) {
     dom.openLeftPanel.setAttribute("aria-expanded", String(leftOpen));
