@@ -59,7 +59,10 @@
               <p class="post-brand-meta">Mapa, prioridad y lectura ejecutiva en una sola interfaz</p>
             </div>
           </div>
-          <span class="post-brand-action">+ Priorizar</span>
+          <div class="post-head-actions">
+            <span class="post-brand-action">+ Priorizar</span>
+            <button id="hide-hero-panel" class="hero-action-secondary" type="button">Ocultar scoring</button>
+          </div>
         </div>
 
         <div class="hero-copy">
@@ -76,6 +79,14 @@
             <button id="open-right-panel" class="hud-button hud-button-primary" type="button" aria-expanded="false">
               Ranking y estado
             </button>
+          </div>
+          <div class="hero-badges">
+            <span>SENAMHI</span>
+            <span>NASA POWER</span>
+            <span>NASA GIBS</span>
+            <span>Sentinel-2</span>
+            <span>ICL</span>
+            <span>IGN</span>
           </div>
         </div>
 
@@ -104,16 +115,10 @@
               Resumen regional cargando...
             </p>
           </section>
-          <div class="hero-badges">
-            <span>SENAMHI</span>
-            <span>NASA POWER</span>
-            <span>NASA GIBS</span>
-            <span>Sentinel-2</span>
-            <span>ICL</span>
-            <span>IGN</span>
-          </div>
         </div>
       </header>
+
+      <button id="show-hero-panel" class="hero-restore" type="button">Mostrar scoring territorial</button>
 
       <main class="workspace">
         <button id="panel-backdrop" class="panel-backdrop" type="button" aria-label="Cerrar paneles"></button>

@@ -113,10 +113,12 @@ const state = {
 
 const dom = {};
 const FOCUS_OVERLAY_STORAGE_KEY = "geoportal-focus-overlay-visible";
+const HERO_PANEL_STORAGE_KEY = "geoportal-hero-panel-visible";
 
 document.addEventListener("DOMContentLoaded", () => {
   cacheDom();
   wirePanelDrawers();
+  wireHeroPanel();
   wireFocusOverlay();
   wireRiskWindow();
   initMap();
@@ -127,11 +129,14 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function cacheDom() {
+  dom.hero = document.querySelector(".hero");
   dom.panelLeft = document.querySelector(".panel-left");
   dom.panelRight = document.querySelector(".panel-right");
   dom.panelBackdrop = document.getElementById("panel-backdrop");
   dom.openLeftPanel = document.getElementById("open-left-panel");
   dom.openRightPanel = document.getElementById("open-right-panel");
+  dom.showHeroPanel = document.getElementById("show-hero-panel");
+  dom.hideHeroPanel = document.getElementById("hide-hero-panel");
   dom.mobileDockButtons = [...document.querySelectorAll("[data-dock-target]")];
   dom.closeLeftPanel = document.getElementById("close-left-panel");
   dom.closeRightPanel = document.getElementById("close-right-panel");
@@ -200,6 +205,16 @@ function wireFocusOverlay() {
 
   dom.showFocusOverlay.addEventListener("click", () => setFocusOverlayVisible(true));
   dom.hideFocusOverlay.addEventListener("click", () => setFocusOverlayVisible(false));
+}
+
+function wireHeroPanel() {
+  if (!dom.hero || !dom.showHeroPanel || !dom.hideHeroPanel) return;
+
+  const storedPreference = readHeroPanelPreference();
+  setHeroPanelVisible(storedPreference === null ? true : storedPreference);
+
+  dom.showHeroPanel.addEventListener("click", () => setHeroPanelVisible(true));
+  dom.hideHeroPanel.addEventListener("click", () => setHeroPanelVisible(false));
 }
 
 function wireRiskWindow() {
@@ -1133,6 +1148,15 @@ function setFocusOverlayVisible(visible) {
   writeFocusOverlayPreference(visible);
 }
 
+function setHeroPanelVisible(visible) {
+  if (!dom.hero || !dom.showHeroPanel) return;
+  dom.hero.classList.toggle("is-collapsed", !visible);
+  dom.showHeroPanel.classList.toggle("is-visible", !visible);
+  dom.showHeroPanel.setAttribute("aria-expanded", String(visible));
+  writeHeroPanelPreference(visible);
+  scheduleMapResize();
+}
+
 function readFocusOverlayPreference() {
   try {
     const value = window.localStorage.getItem(FOCUS_OVERLAY_STORAGE_KEY);
@@ -1144,11 +1168,30 @@ function readFocusOverlayPreference() {
   return null;
 }
 
+function readHeroPanelPreference() {
+  try {
+    const value = window.localStorage.getItem(HERO_PANEL_STORAGE_KEY);
+    if (value === "1") return true;
+    if (value === "0") return false;
+  } catch (error) {
+    console.warn("No se pudo leer la preferencia del panel de scoring.", error);
+  }
+  return null;
+}
+
 function writeFocusOverlayPreference(visible) {
   try {
     window.localStorage.setItem(FOCUS_OVERLAY_STORAGE_KEY, visible ? "1" : "0");
   } catch (error) {
     console.warn("No se pudo guardar la preferencia del panel de enfoque.", error);
+  }
+}
+
+function writeHeroPanelPreference(visible) {
+  try {
+    window.localStorage.setItem(HERO_PANEL_STORAGE_KEY, visible ? "1" : "0");
+  } catch (error) {
+    console.warn("No se pudo guardar la preferencia del panel de scoring.", error);
   }
 }
 
