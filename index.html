@@ -212,6 +212,23 @@
               </p>
             </div>
           </div>
+          <div class="map-overlay top-center">
+            <section class="selection-card">
+              <div class="selection-card-header">
+                <div>
+                  <p class="overlay-label">Selección territorial</p>
+                  <strong>Polígono o rectángulo</strong>
+                </div>
+                <button id="clear-selection" class="overlay-dismiss" type="button">Limpiar</button>
+              </div>
+              <p class="selection-copy">
+                Usa la barra de dibujo visible en la esquina inferior derecha para trazar una selección y resumir las celdas contenidas.
+              </p>
+              <div id="selection-stats" class="selection-stats selection-stats-empty">
+                Sin selección activa. Dibuja un polígono o rectángulo para ver calor, construcción y prioridad.
+              </div>
+            </section>
+          </div>
           <div id="risk-window" class="map-overlay top-right risk-window is-hidden">
             <article id="risk-window-card" class="risk-card" data-tone="neutral">
               <div class="risk-card-header">

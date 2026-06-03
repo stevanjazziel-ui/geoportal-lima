@@ -357,6 +357,13 @@ textarea {
   justify-content: flex-end;
 }
 
+.map-overlay.top-center {
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  justify-content: center;
+}
+
 .map-overlay.bottom-left {
   left: 18px;
   bottom: 18px;
@@ -377,6 +384,76 @@ textarea {
   color: #fff7ee;
   box-shadow: 0 12px 34px rgba(20, 28, 28, 0.24);
   backdrop-filter: blur(14px);
+}
+
+.selection-card {
+  width: min(460px, calc(100vw - 72px));
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 20px;
+  background: rgba(20, 28, 28, 0.82);
+  color: #fff7ee;
+  box-shadow: 0 12px 34px rgba(20, 28, 28, 0.24);
+  backdrop-filter: blur(14px);
+}
+
+.selection-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.selection-copy {
+  margin: 10px 0 0;
+  color: rgba(255, 247, 238, 0.8);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.selection-stats {
+  margin-top: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 12px;
+}
+
+.selection-stats-empty {
+  color: rgba(255, 247, 238, 0.72);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.selection-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.selection-stat {
+  display: grid;
+  gap: 4px;
+}
+
+.selection-stat-label {
+  color: #f5c79d;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.selection-stat strong {
+  font-size: 1rem;
+  line-height: 1.05;
+}
+
+.selection-summary-text {
+  margin: 10px 0 0;
+  color: rgba(255, 247, 238, 0.86);
+  font-size: 0.82rem;
+  line-height: 1.42;
 }
 
 .risk-window.is-hidden {
@@ -1450,6 +1527,10 @@ body {
   right: 14px;
 }
 
+.map-overlay.top-center {
+  top: 136px;
+}
+
 .map-overlay.bottom-left {
   left: 14px;
   bottom: 14px;
@@ -1501,6 +1582,10 @@ body {
   .map-overlay.top-right {
     top: 136px;
     right: 12px;
+  }
+
+  .map-overlay.top-center {
+    top: 136px;
   }
 
   .leaflet-bottom.leaflet-right .leaflet-draw {
@@ -1575,6 +1660,10 @@ body {
     right: 12px;
   }
 
+  .map-overlay.top-center {
+    top: 126px;
+  }
+
   .map-overlay.bottom-right {
     right: 12px;
     bottom: 12px;
@@ -1644,6 +1733,13 @@ body {
     right: 10px;
   }
 
+  .map-overlay.top-center {
+    top: 124px;
+    left: 10px;
+    right: 10px;
+    transform: none;
+  }
+
   .leaflet-bottom.leaflet-right .leaflet-draw {
     margin-right: 10px;
     margin-bottom: 148px;
@@ -1666,6 +1762,7 @@ body {
   }
 
   .overlay-card,
+  .selection-card,
   .legend-card,
   .risk-card {
     width: 100%;
@@ -1686,5 +1783,9 @@ body {
     flex: 1 1 0;
     justify-content: center;
     text-align: center;
+  }
+
+  .selection-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
