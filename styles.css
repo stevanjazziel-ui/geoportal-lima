@@ -1893,9 +1893,11 @@ body {
   display: none;
   position: absolute;
   top: 86px;
-  left: 16px;
+  right: 344px;
+  left: auto;
   z-index: 621;
   align-self: start;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.24);
 }
 
 .hero-restore.is-visible {
@@ -2512,6 +2514,10 @@ body {
   .hero {
     width: min(500px, calc(100% - 344px));
   }
+
+  .hero-restore {
+    right: 324px;
+  }
 }
 
 @media (max-height: 920px) and (min-width: 1101px) {
@@ -2533,6 +2539,11 @@ body {
     width: min(490px, calc(100% - 336px));
     gap: 8px;
     padding: 10px 12px;
+  }
+
+  .hero-restore {
+    top: 78px;
+    right: 314px;
   }
 
   .hero h1 {
