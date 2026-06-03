@@ -1682,7 +1682,7 @@ body {
 
 .social-chrome {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .social-bar,
@@ -1700,7 +1700,7 @@ body {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  padding: 12px 14px;
+  padding: 10px 14px;
   border-radius: 22px;
 }
 
@@ -1761,7 +1761,7 @@ body {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 10px 14px;
   border-radius: 18px;
 }
 
@@ -1798,9 +1798,9 @@ body {
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(310px, 0.82fr);
-  gap: 18px;
-  padding: 18px;
+  grid-template-columns: minmax(0, 1.28fr) minmax(300px, 0.72fr);
+  gap: 14px;
+  padding: 14px 16px;
   border-radius: 26px;
 }
 
@@ -1810,6 +1810,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  margin-bottom: 2px;
 }
 
 .post-brand {
@@ -1832,26 +1833,29 @@ body {
 }
 
 .hero-copy {
-  gap: 10px;
+  gap: 8px;
 }
 
 .hero h1 {
-  max-width: 14ch;
-  font-size: clamp(2rem, 3vw, 3.6rem);
+  max-width: 17ch;
+  font-size: clamp(1.85rem, 2.55vw, 2.95rem);
   line-height: 0.94;
   color: #ffffff;
 }
 
 .hero-text {
-  max-width: 70ch;
+  max-width: 58ch;
   color: var(--text-soft);
-  font-size: 1rem;
-  line-height: 1.55;
-  display: block;
+  font-size: 0.9rem;
+  line-height: 1.48;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 .hero-actions {
-  margin-top: 2px;
+  margin-top: 0;
 }
 
 .hud-button,
@@ -1888,13 +1892,13 @@ body {
 
 .hero-side {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   align-content: start;
 }
 
 .hero-summary {
   min-width: 0;
-  padding: 14px;
+  padding: 12px;
   border-radius: 22px;
   background:
     linear-gradient(180deg, rgba(16, 25, 39, 0.95), rgba(10, 17, 28, 0.94)),
@@ -1909,14 +1913,14 @@ body {
 
 .hero-mini-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .hero-mini {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(125, 158, 204, 0.12);
   border-radius: 16px;
-  padding: 10px 12px;
+  padding: 9px 11px;
 }
 
 .hero-mini-label,
@@ -1926,13 +1930,16 @@ body {
 
 .hero-mini strong {
   color: #ffffff;
-  font-size: 0.98rem;
+  font-size: 0.92rem;
 }
 
 .hero-summary-note {
-  display: block;
-  font-size: 0.78rem;
-  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  font-size: 0.74rem;
+  line-height: 1.38;
 }
 
 .hero-badges {
@@ -1944,12 +1951,14 @@ body {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(125, 158, 204, 0.14);
   color: var(--text-soft);
+  padding: 5px 8px;
+  font-size: 0.63rem;
 }
 
 .workspace {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 350px;
+  grid-template-columns: minmax(0, 1fr) 332px;
   gap: 14px;
   min-height: 0;
   overflow: hidden;
@@ -1993,8 +2002,8 @@ body {
   position: absolute;
   top: 18px;
   left: 18px;
-  max-width: min(540px, calc(100% - 36px));
-  padding: 18px 20px;
+  max-width: min(500px, calc(100% - 36px));
+  padding: 14px 16px;
   border-radius: 24px;
   border: 1px solid rgba(125, 158, 204, 0.16);
   background: linear-gradient(180deg, rgba(7, 13, 24, 0.86), rgba(7, 13, 24, 0.62));
@@ -2010,18 +2019,18 @@ body {
 
 .map-stage-copy h2 {
   margin: 0;
-  font-size: clamp(1.4rem, 2.2vw, 2.5rem);
+  font-size: clamp(1.15rem, 1.9vw, 2rem);
   line-height: 0.96;
   color: #ffffff;
-  max-width: 14ch;
+  max-width: 16ch;
 }
 
 .map-stage-copy p {
-  margin: 12px 0 0;
-  max-width: 54ch;
+  margin: 10px 0 0;
+  max-width: 48ch;
   color: var(--text-soft);
-  font-size: 0.94rem;
-  line-height: 1.52;
+  font-size: 0.84rem;
+  line-height: 1.44;
 }
 
 .map-stage-footer {
@@ -2037,7 +2046,7 @@ body {
 
 .map-stage-pill {
   min-width: 240px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: 18px;
   border: 1px solid rgba(125, 158, 204, 0.16);
   background: rgba(8, 14, 25, 0.82);
@@ -2048,13 +2057,13 @@ body {
 .map-stage-pill strong {
   display: block;
   color: #ffffff;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
 }
 
 .map-stage-pill span {
   display: block;
   margin-top: 4px;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   line-height: 1.4;
 }
 
@@ -2400,6 +2409,114 @@ body {
 
   .hero-text {
     font-size: 0.92rem;
+  }
+}
+
+@media (max-height: 920px) and (min-width: 1101px) {
+  .app-shell {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .social-recommendation {
+    display: none;
+  }
+
+  .social-bar {
+    padding: 8px 12px;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 1.34fr) minmax(280px, 0.66fr);
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .hero h1 {
+    max-width: 19ch;
+    font-size: clamp(1.65rem, 2.2vw, 2.45rem);
+  }
+
+  .hero-text {
+    font-size: 0.82rem;
+    line-height: 1.4;
+    -webkit-line-clamp: 2;
+  }
+
+  .hero-summary {
+    padding: 10px;
+  }
+
+  .hero-mini {
+    padding: 8px 10px;
+  }
+
+  .hero-summary-note {
+    -webkit-line-clamp: 2;
+    font-size: 0.7rem;
+  }
+
+  .hero-badges {
+    gap: 6px;
+  }
+
+  .hero-badges span {
+    padding: 4px 7px;
+    font-size: 0.6rem;
+  }
+
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) 308px;
+  }
+
+  .map-stage-copy {
+    top: 14px;
+    left: 14px;
+    max-width: min(440px, calc(100% - 28px));
+    padding: 12px 14px;
+  }
+
+  .map-stage-copy h2 {
+    font-size: clamp(1.05rem, 1.55vw, 1.55rem);
+    max-width: 18ch;
+  }
+
+  .map-stage-copy p {
+    font-size: 0.78rem;
+    line-height: 1.38;
+  }
+
+  .map-stage-footer {
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    gap: 10px;
+  }
+
+  .map-stage-pill {
+    min-width: 210px;
+    padding: 9px 12px;
+  }
+
+  .map-overlay.top-right,
+  .leaflet-top.leaflet-right {
+    top: 14px;
+    right: 14px;
+  }
+
+  .map-overlay.top-left {
+    top: 138px;
+    left: 14px;
+  }
+
+  .map-overlay.bottom-left {
+    left: 14px;
+    bottom: 78px;
+  }
+
+  .map-overlay.bottom-right {
+    right: 14px;
+    bottom: 14px;
   }
 }
 
