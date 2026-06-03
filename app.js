@@ -114,12 +114,14 @@ const state = {
 const dom = {};
 const FOCUS_OVERLAY_STORAGE_KEY = "geoportal-focus-overlay-visible";
 const HERO_PANEL_STORAGE_KEY = "geoportal-hero-panel-visible";
+const LEGEND_OVERLAY_STORAGE_KEY = "geoportal-legend-overlay-visible";
 
 document.addEventListener("DOMContentLoaded", () => {
   cacheDom();
   wirePanelDrawers();
   wireHeroPanel();
   wireFocusOverlay();
+  wireLegendOverlay();
   wireRiskWindow();
   initMap();
   wireBaseMapSwitcher();
@@ -160,6 +162,9 @@ function cacheDom() {
   dom.focusOverlay = document.getElementById("focus-overlay");
   dom.showFocusOverlay = document.getElementById("show-focus-overlay");
   dom.hideFocusOverlay = document.getElementById("hide-focus-overlay");
+  dom.legendOverlay = document.getElementById("legend-overlay");
+  dom.showLegendOverlay = document.getElementById("show-legend-overlay");
+  dom.hideLegendOverlay = document.getElementById("hide-legend-overlay");
   dom.riskWindow = document.getElementById("risk-window");
   dom.riskWindowCard = document.getElementById("risk-window-card");
   dom.riskWindowTitle = document.getElementById("risk-window-title");
@@ -205,6 +210,16 @@ function wireFocusOverlay() {
 
   dom.showFocusOverlay.addEventListener("click", () => setFocusOverlayVisible(true));
   dom.hideFocusOverlay.addEventListener("click", () => setFocusOverlayVisible(false));
+}
+
+function wireLegendOverlay() {
+  if (!dom.legendOverlay || !dom.showLegendOverlay || !dom.hideLegendOverlay) return;
+
+  const storedPreference = readLegendOverlayPreference();
+  setLegendOverlayVisible(storedPreference === null ? true : storedPreference);
+
+  dom.showLegendOverlay.addEventListener("click", () => setLegendOverlayVisible(true));
+  dom.hideLegendOverlay.addEventListener("click", () => setLegendOverlayVisible(false));
 }
 
 function wireHeroPanel() {
@@ -1148,6 +1163,15 @@ function setFocusOverlayVisible(visible) {
   writeFocusOverlayPreference(visible);
 }
 
+function setLegendOverlayVisible(visible) {
+  if (!dom.legendOverlay) return;
+  dom.legendOverlay.classList.toggle("is-collapsed", !visible);
+  if (dom.showLegendOverlay) {
+    dom.showLegendOverlay.setAttribute("aria-expanded", String(visible));
+  }
+  writeLegendOverlayPreference(visible);
+}
+
 function setHeroPanelVisible(visible) {
   if (!dom.hero || !dom.showHeroPanel) return;
   dom.hero.classList.toggle("is-collapsed", !visible);
@@ -1168,6 +1192,17 @@ function readFocusOverlayPreference() {
   return null;
 }
 
+function readLegendOverlayPreference() {
+  try {
+    const value = window.localStorage.getItem(LEGEND_OVERLAY_STORAGE_KEY);
+    if (value === "1") return true;
+    if (value === "0") return false;
+  } catch (error) {
+    console.warn("No se pudo leer la preferencia de la leyenda.", error);
+  }
+  return null;
+}
+
 function readHeroPanelPreference() {
   try {
     const value = window.localStorage.getItem(HERO_PANEL_STORAGE_KEY);
@@ -1184,6 +1219,14 @@ function writeFocusOverlayPreference(visible) {
     window.localStorage.setItem(FOCUS_OVERLAY_STORAGE_KEY, visible ? "1" : "0");
   } catch (error) {
     console.warn("No se pudo guardar la preferencia del panel de enfoque.", error);
+  }
+}
+
+function writeLegendOverlayPreference(visible) {
+  try {
+    window.localStorage.setItem(LEGEND_OVERLAY_STORAGE_KEY, visible ? "1" : "0");
+  } catch (error) {
+    console.warn("No se pudo guardar la preferencia de la leyenda.", error);
   }
 }
 

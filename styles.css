@@ -475,6 +475,14 @@ textarea {
   display: none;
 }
 
+.map-overlay.bottom-left.is-collapsed .legend-card {
+  display: none;
+}
+
+.map-overlay.bottom-left:not(.is-collapsed) .overlay-toggle-show {
+  display: none;
+}
+
 .overlay-card-header {
   display: flex;
   align-items: center;
@@ -601,27 +609,46 @@ textarea {
 }
 
 .legend-card h3 {
-  margin: 0 0 12px;
-  font-size: 0.96rem;
+  margin: 0;
+  font-size: 0.84rem;
+}
+
+.legend-card {
+  max-width: min(292px, calc(100vw - 64px));
+  padding: 12px 13px;
+  border-radius: 18px;
+}
+
+.legend-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.legend-toggle {
+  padding: 9px 12px;
 }
 
 .legend-group + .legend-group {
-  margin-top: 12px;
+  margin-top: 9px;
 }
 
 .legend-group p {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: rgba(255, 247, 238, 0.85);
-  font-size: 0.86rem;
+  font-size: 0.75rem;
 }
 
 .legend-group span {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-right: 10px;
-  margin-bottom: 8px;
-  font-size: 0.82rem;
+  gap: 6px;
+  margin-right: 8px;
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+  line-height: 1.2;
 }
 
 .dot,
@@ -634,8 +661,8 @@ textarea {
 .ring-swatch {
   position: relative;
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   border: 2px solid rgba(255, 247, 238, 0.95);
   background: rgba(232, 123, 52, 0.2);
@@ -647,8 +674,8 @@ textarea {
 .core-swatch {
   position: relative;
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: #ea7b34;
   border: 2px solid rgba(255, 248, 238, 0.92);
@@ -657,8 +684,8 @@ textarea {
 
 .glow-swatch {
   position: relative;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   opacity: 0.95;
   box-shadow:
@@ -668,14 +695,14 @@ textarea {
 }
 
 .dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
 }
 
 .swatch {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 4px;
 }
 
@@ -744,10 +771,14 @@ textarea {
 }
 
 .legend-note {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: rgba(255, 247, 238, 0.7);
-  font-size: 0.76rem;
-  line-height: 1.45;
+  font-size: 0.66rem;
+  line-height: 1.32;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .build-extreme {

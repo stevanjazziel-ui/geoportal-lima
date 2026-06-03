@@ -175,9 +175,15 @@
             </article>
           </div>
 
-          <div class="map-overlay bottom-left">
+          <div id="legend-overlay" class="map-overlay bottom-left">
+            <button id="show-legend-overlay" class="overlay-toggle overlay-toggle-show legend-toggle" type="button">
+              Leyenda
+            </button>
             <div class="legend-card">
-              <h3>Leyenda rapida</h3>
+              <div class="legend-card-header">
+                <h3>Leyenda rapida</h3>
+                <button id="hide-legend-overlay" class="overlay-dismiss" type="button">Ocultar</button>
+              </div>
               <div class="legend-group">
                 <p>Frecuencia SENAMHI</p>
                 <span><i class="dot freq-low"></i> Baja</span>
