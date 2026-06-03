@@ -503,11 +503,11 @@ function clearSelectionShapes() {
 }
 
 function updateSelectionSummary() {
-  if (!dom.selectionStats) return;
-
   const selectedCells = getSelectedCells();
   state.selectedCellIds = new Set(selectedCells.map((cell) => cell.id));
   refreshCellSelectionStyles();
+
+  if (!dom.selectionStats) return;
 
   if (!selectedCells.length) {
     dom.selectionStats.innerHTML =
