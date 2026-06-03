@@ -2474,7 +2474,7 @@ body {
 
 .map-overlay.bottom-left {
   left: 18px;
-  bottom: 92px;
+  bottom: 18px;
 }
 
 .map-overlay.bottom-right {
@@ -2575,7 +2575,7 @@ body {
 
   .map-overlay.bottom-left {
     left: 14px;
-    bottom: 78px;
+    bottom: 14px;
   }
 
   .map-overlay.bottom-right {
