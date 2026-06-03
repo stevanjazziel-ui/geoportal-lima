@@ -102,12 +102,9 @@ const state = {
   stationLayer: null,
   rankingPinsLayer: null,
   mountainLayer: null,
-  drawnItems: null,
-  drawControl: null,
   remoteLayers: new Map(),
   cellById: new Map(),
   stationById: new Map(),
-  selectedCellIds: new Set(),
   sortedByPriority: [],
   activeDrawer: null,
   baseLayers: new Map(),
@@ -164,8 +161,6 @@ function cacheDom() {
   dom.riskWindowMetrics = document.getElementById("risk-window-metrics");
   dom.riskWindowSolution = document.getElementById("risk-window-solution");
   dom.hideRiskWindow = document.getElementById("hide-risk-window");
-  dom.selectionStats = document.getElementById("selection-stats");
-  dom.clearSelection = document.getElementById("clear-selection");
 }
 
 function wirePanelDrawers() {
@@ -234,7 +229,6 @@ function initMap() {
   state.baseLayers.set("light", lightBase);
 
   state.map.fitBounds(LIMA_BOUNDS, { padding: [18, 18] });
-  initDrawTools();
   scheduleMapResize();
 }
 
@@ -299,7 +293,6 @@ function loadPreparedData() {
   updateHeroSummary();
   renderRanking();
   updateFocusCard();
-  updateSelectionSummary();
   scheduleMapResize();
   setStatus(
     `Resultados listos. Se analizaron ${prepared.cells.length} celdas con frecuencia oficial SENAMHI, hotspots termicos hibridos y ${prepared.stations.length} estaciones base.`,
@@ -343,7 +336,13 @@ function drawRegionalCells() {
   state.cellLayer = L.geoJSON(featureCollection, {
     style(feature) {
       const cell = feature.properties;
-      return getCellStyle(cell, state.selectedCellIds.has(cell.id));
+      return {
+        color: getHazardColor(cell.hazardLevel),
+        weight: 0.9 + cell.priorityScore * 1.2,
+        opacity: 0.82,
+        fillColor: getConstructionColor(cell.constructionIndex),
+        fillOpacity: 0.18 + cell.priorityScore * 0.22,
+      };
     },
     onEachFeature(feature, layerRef) {
       const cell = feature.properties;
@@ -354,31 +353,6 @@ function drawRegionalCells() {
   });
 
   state.cellLayer.addTo(state.map);
-}
-
-function getCellStyle(cell, selected = false) {
-  const baseWeight = 0.9 + Number(cell.priorityScore || 0) * 1.2;
-  const baseOpacity = 0.82;
-  const baseFillOpacity = 0.18 + Number(cell.priorityScore || 0) * 0.22;
-
-  if (!selected) {
-    return {
-      color: getHazardColor(cell.hazardLevel),
-      weight: baseWeight,
-      opacity: baseOpacity,
-      fillColor: getConstructionColor(cell.constructionIndex),
-      fillOpacity: baseFillOpacity,
-    };
-  }
-
-  return {
-    color: "#fff7ee",
-    weight: baseWeight + 1.9,
-    opacity: 0.98,
-    fillColor: getHybridColor(getHybridHeatIndex(cell)),
-    fillOpacity: Math.min(0.72, baseFillOpacity + 0.26),
-    dashArray: "8 6",
-  };
 }
 
 // Soft territorial hotspot layer so the hybrid thermal signal is legible before opening panels.
@@ -436,183 +410,6 @@ function drawHybridHotspots() {
   state.hybridHotspotLayer.addTo(state.map);
 }
 
-function initDrawTools() {
-  if (!state.map) return;
-
-  state.drawnItems = L.featureGroup().addTo(state.map);
-  if (dom.clearSelection) dom.clearSelection.disabled = true;
-  dom.clearSelection?.addEventListener("click", clearSelectionShapes);
-
-  if (!L.Control?.Draw) {
-    if (dom.selectionStats) {
-      dom.selectionStats.textContent =
-        "Las herramientas de dibujo no cargaron en este navegador. El análisis principal sigue disponible.";
-      dom.selectionStats.classList.add("selection-stats-empty");
-    }
-    return;
-  }
-
-  state.drawControl = new L.Control.Draw({
-    position: "bottomright",
-    edit: {
-      featureGroup: state.drawnItems,
-      edit: true,
-      remove: true,
-    },
-    draw: {
-      polygon: {
-        allowIntersection: false,
-        showArea: true,
-        shapeOptions: {
-          color: "#f5c79d",
-          weight: 2,
-          fillColor: "#f5c79d",
-          fillOpacity: 0.16,
-        },
-      },
-      rectangle: {
-        shapeOptions: {
-          color: "#8fd2de",
-          weight: 2,
-          fillColor: "#8fd2de",
-          fillOpacity: 0.14,
-        },
-      },
-      polyline: false,
-      circle: false,
-      marker: false,
-      circlemarker: false,
-    },
-  });
-
-  state.map.addControl(state.drawControl);
-  state.map.on(L.Draw.Event.CREATED, handleShapeCreated);
-  state.map.on(L.Draw.Event.EDITED, updateSelectionSummary);
-  state.map.on(L.Draw.Event.DELETED, updateSelectionSummary);
-}
-
-function handleShapeCreated(event) {
-  if (!state.drawnItems) return;
-  state.drawnItems.addLayer(event.layer);
-  updateSelectionSummary();
-}
-
-function clearSelectionShapes() {
-  state.drawnItems?.clearLayers();
-  updateSelectionSummary();
-}
-
-function updateSelectionSummary() {
-  if (!dom.selectionStats) return;
-
-  const selectedCells = getSelectedCells();
-  state.selectedCellIds = new Set(selectedCells.map((cell) => cell.id));
-  refreshCellSelectionStyles();
-
-  if (!selectedCells.length) {
-    dom.selectionStats.innerHTML =
-      "Sin selección activa. Dibuja un polígono o rectángulo para ver calor, construcción y prioridad.";
-    dom.selectionStats.classList.add("selection-stats-empty");
-    if (dom.clearSelection) dom.clearSelection.disabled = true;
-    return;
-  }
-
-  const avgHybridTemp =
-    selectedCells.reduce((sum, cell) => sum + getHybridTempC(cell), 0) / selectedCells.length;
-  const avgConstruction =
-    selectedCells.reduce((sum, cell) => sum + Number(cell.constructionIndex || 0), 0) / selectedCells.length;
-  const maxPriority = [...selectedCells].sort((a, b) => Number(b.priorityScore || 0) - Number(a.priorityScore || 0))[0];
-  const highRiskCount = selectedCells.filter(
-    (cell) => getHazardRank(cell.hazardLevel) >= HAZARD_ORDER.Alto
-  ).length;
-
-  dom.selectionStats.classList.remove("selection-stats-empty");
-  dom.selectionStats.innerHTML = `
-    <div class="selection-stat-grid">
-      <article class="selection-stat">
-        <span class="selection-stat-label">Celdas</span>
-        <strong>${selectedCells.length}</strong>
-      </article>
-      <article class="selection-stat">
-        <span class="selection-stat-label">Sensación media</span>
-        <strong>${formatNumber(avgHybridTemp, 1)}°C</strong>
-      </article>
-      <article class="selection-stat">
-        <span class="selection-stat-label">Construcción media</span>
-        <strong>${formatNumber(avgConstruction, 2)}</strong>
-      </article>
-      <article class="selection-stat">
-        <span class="selection-stat-label">Riesgo alto+</span>
-        <strong>${highRiskCount}</strong>
-      </article>
-    </div>
-    <p class="selection-summary-text">
-      ${escapeHtml(maxPriority.name)} lidera dentro de la selección con prioridad ${formatNumber(
-        maxPriority.priorityScore,
-        2
-      )} y frecuencia oficial ${formatNumber(maxPriority.frequency, 2)}.
-    </p>
-  `;
-
-  if (dom.clearSelection) dom.clearSelection.disabled = false;
-}
-
-function getSelectedCells() {
-  if (!state.data?.cells?.length || !state.drawnItems) return [];
-
-  const layers = state.drawnItems.getLayers();
-  if (!layers.length) return [];
-
-  return state.data.cells.filter((cell) => layers.some((layer) => isCellInsideLayer(cell, layer)));
-}
-
-function isCellInsideLayer(cell, layer) {
-  const latLng = L.latLng(cell.lat, cell.lon);
-
-  if (typeof layer.getBounds === "function" && !layer.getBounds().contains(latLng)) {
-    return false;
-  }
-
-  const rawLatLngs = typeof layer.getLatLngs === "function" ? layer.getLatLngs() : null;
-  const ring = extractPrimaryRing(rawLatLngs);
-  if (!ring?.length) return false;
-
-  return pointInRing(latLng, ring);
-}
-
-function extractPrimaryRing(latLngs) {
-  if (!Array.isArray(latLngs) || !latLngs.length) return null;
-  if (Array.isArray(latLngs[0])) return latLngs[0];
-  return latLngs;
-}
-
-function pointInRing(point, ring) {
-  let inside = false;
-
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i].lng;
-    const yi = ring[i].lat;
-    const xj = ring[j].lng;
-    const yj = ring[j].lat;
-    const intersects =
-      yi > point.lat !== yj > point.lat &&
-      point.lng < ((xj - xi) * (point.lat - yi)) / ((yj - yi) || Number.EPSILON) + xi;
-    if (intersects) inside = !inside;
-  }
-
-  return inside;
-}
-
-function refreshCellSelectionStyles() {
-  if (!state.cellLayer) return;
-
-  state.cellLayer.eachLayer((layerRef) => {
-    const cell = layerRef.feature?.properties;
-    if (!cell) return;
-    layerRef.setStyle(getCellStyle(cell, state.selectedCellIds.has(cell.id)));
-  });
-}
-
 function drawHeatStations() {
   state.stationById.clear();
   state.stationLayer = L.layerGroup();
@@ -657,18 +454,17 @@ function drawHeatStations() {
     });
 
     const nucleus = L.circleMarker(latLng, {
-      radius: 1.8 + hybridIndex * 1.7,
+      radius: 1.7 + hybridIndex * 1.6,
       color: "#163132",
-      weight: 0.8,
-      opacity: 0.92,
+      weight: 0,
       fillColor: "#fffaf2",
-      fillOpacity: 0.94,
+      fillOpacity: 0.92,
+      interactive: false,
       className: `station-nucleus station-${frequencyBand}`,
     });
 
     [buffer, halo, marker, nucleus].forEach((layer) => {
-      layer.bindPopup(popupHtml);
-      layer.on("click", () => showRiskWindowForStation(station));
+      layer.bindPopup?.(popupHtml);
       state.stationLayer.addLayer(layer);
     });
 
@@ -928,51 +724,6 @@ function showRiskWindowForCell(cell) {
   });
 }
 
-function showRiskWindowForStation(station) {
-  if (!station || !dom.riskWindow || !dom.riskWindowCard) return;
-
-  const integratedRisk = getIntegratedRiskScore(station);
-  const hazardRank = getHazardRank(station.hazardLevel);
-  const builtUpRatio = getBuiltUpRatio(station);
-  const ndbiMean = getNdbiMean(station);
-  const hybridTempC = getHybridTempC(station);
-  const hybridHeatIndex = getHybridHeatIndex(station);
-  const surfaceTempC = getSurfaceTempC(station);
-  const tone = getRiskTone(integratedRisk);
-  const mountainContext = hasMountainContext(station)
-    ? "La estacion se ubica en contexto serrano o de loma, por lo que el entorno merece lectura territorial cuidadosa."
-    : "La estacion no se ubica en un contexto serrano dominante.";
-
-  dom.riskWindowCard.dataset.tone = tone;
-  dom.riskWindow.classList.remove("is-hidden");
-  dom.riskWindowTitle.textContent = `${station.name} · estación base`;
-  dom.riskWindowSummary.textContent =
-    `${station.name} registra un riesgo integrado de ${integratedRisk}/100, con vulnerabilidad ${hazardRank}/4 ` +
-    `(${station.hazardLevel}), frecuencia oficial ${formatNumber(station.frequency, 2)}, sensacion hibrida ${formatNumber(
-      hybridTempC,
-      1
-    )}°C, superficie ${formatNumber(surfaceTempC, 1)}°C y ${formatInteger(station.eventCount)} eventos de calor en ${formatInteger(
-      station.summerDays
-    )} dias observados. ${mountainContext}`;
-  dom.riskWindowSolution.textContent = buildRiskRecommendation(station, {
-    integratedRisk,
-    hazardRank,
-    builtUpRatio,
-    hybridTempC,
-    hybridHeatIndex,
-    surfaceTempC,
-  });
-  dom.riskWindowMetrics.innerHTML = buildStationRiskMetricsHtml(station, {
-    integratedRisk,
-    hazardRank,
-    builtUpRatio,
-    ndbiMean,
-    hybridTempC,
-    hybridHeatIndex,
-    surfaceTempC,
-  });
-}
-
 function hideRiskWindow() {
   dom.riskWindow?.classList.add("is-hidden");
 }
@@ -1026,69 +777,6 @@ function buildRiskMetricsHtml(cell, metrics) {
       detail: `${String(cell.hazardLevel || "Sin dato")} · ${Number(cell.nearestStationDistanceKm || 0).toFixed(
         1
       )} km de la estacion base`,
-    },
-  ];
-
-  return metricCards
-    .map(
-      (entry) => `
-        <article class="risk-metric">
-          <span class="risk-metric-label">${escapeHtml(entry.label)}</span>
-          <strong class="risk-metric-value">${escapeHtml(entry.value)}</strong>
-          <span class="risk-metric-detail">${escapeHtml(entry.detail)}</span>
-        </article>
-      `
-    )
-    .join("");
-}
-
-function buildStationRiskMetricsHtml(station, metrics) {
-  const metricCards = [
-    {
-      label: "Riesgo integrado",
-      value: `${metrics.integratedRisk}/100`,
-      detail: `Prioridad ${formatNumber(station.priorityScore, 2)}`,
-    },
-    {
-      label: "Frecuencia SENAMHI",
-      value: formatNumber(station.frequency, 2),
-      detail: `${String(station.heatLabel || "Sin dato")} · ${formatInteger(station.eventCount)} eventos`,
-    },
-    {
-      label: "Sensacion hibrida",
-      value: `${formatNumber(metrics.hybridTempC, 1)}°C`,
-      detail: `Indice ${formatNumber(metrics.hybridHeatIndex, 2)} · ${String(station.hybridHeatLabel || "Sin dato")}`,
-    },
-    {
-      label: "Superficie refinada",
-      value: `${formatNumber(metrics.surfaceTempC, 1)}°C`,
-      detail: `POWER ${formatNumber(getThermalMetric(station, "earthSkinTempC"), 1)}°C + ajuste ${formatNumber(
-        getThermalMetric(station, "surfaceAdjustmentC"),
-        1
-      )}°C`,
-    },
-    {
-      label: "Humedad y viento",
-      value: `${formatNumber(getThermalMetric(station, "relativeHumidity"), 0)}% · ${formatNumber(
-        getThermalMetric(station, "windSpeedMs"),
-        1
-      )} m/s`,
-      detail: `Tmax ${formatNumber(getThermalMetric(station, "airTempMaxC"), 1)}°C · aparente ${formatNumber(
-        getThermalMetric(station, "apparentTempC"),
-        1
-      )}°C`,
-    },
-    {
-      label: "Construccion NDBI",
-      value: formatNumber(station.constructionIndex, 2),
-      detail: `${String(station.constructionLabel || "Sin dato")} · ${Math.round(
-        metrics.builtUpRatio * 100
-      )}% edificada · NDBI ${formatNumber(metrics.ndbiMean, 2)}`,
-    },
-    {
-      label: "Contexto y dias",
-      value: `${metrics.hazardRank}/4`,
-      detail: `${String(station.hazardLevel || "Sin dato")} · ${formatInteger(station.summerDays)} dias observados`,
     },
   ];
 
@@ -1213,101 +901,41 @@ function capitalizeSentence(value) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function formatNumber(value, digits = 2, fallback = "--") {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric.toFixed(digits) : fallback;
-}
-
-function formatInteger(value, fallback = "--") {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? String(Math.round(numeric)) : fallback;
-}
-
-function formatDistanceKm(value, digits = 1, fallback = "-- km") {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? `${numeric.toFixed(digits)} km` : fallback;
-}
-
-function buildSatellitePreviewHtml(label, preview) {
-  if (!preview) {
-    return `<div class="popup-thumb popup-thumb-empty">Vista satelital no disponible</div>`;
-  }
-
-  return `<img class="popup-thumb" src="${preview}" alt="Muestra satelital de ${escapeHtml(label)}">`;
-}
-
 function buildCellPopupHtml(cell) {
   const mountainText =
     cell.mountainZone || (cell.mountainContext && cell.mountainContext.length)
       ? "Si, con rasgo serrano o de loma"
       : "No dominante";
-  const builtUpRatio = cell?.satelliteMetrics?.builtUpRatio;
-  const ndbiMean = cell?.satelliteMetrics?.ndbiMean;
-  const frequencyText = formatNumber(cell.frequency, 2);
-  const hybridTempText = formatNumber(getHybridTempC(cell), 1);
-  const hybridIndexText = formatNumber(cell.hybridHeatIndex, 2);
-  const surfaceTempText = formatNumber(getSurfaceTempC(cell), 1);
-  const constructionText = formatNumber(cell.constructionIndex, 2);
-  const humidityText = formatNumber(getThermalMetric(cell, "relativeHumidity"), 0);
-  const windText = formatNumber(getThermalMetric(cell, "windSpeedMs"), 1);
-  const stationDistanceText = formatDistanceKm(cell.nearestStationDistanceKm);
 
   return `
     <div class="popup-card">
       <h3 class="popup-title">${escapeHtml(cell.name)}</h3>
-      ${buildSatellitePreviewHtml(cell.name, cell.satellitePreview)}
-      <div class="popup-grid">
-        <span><strong>Frecuencia SENAMHI:</strong> ${frequencyText} · ${escapeHtml(cell.heatLabel || "Sin dato")}</span>
-        <span><strong>Sensacion hibrida:</strong> ${hybridTempText}°C · ${hybridIndexText}</span>
-        <span><strong>Temperatura superficial:</strong> ${surfaceTempText}°C</span>
-        <span><strong>Indice constructivo:</strong> ${constructionText} (${escapeHtml(
-          cell.constructionLabel || "Sin dato"
-        )})</span>
-        <span><strong>Vulnerabilidad:</strong> ${escapeHtml(cell.hazardLevel || "Sin dato")} (${escapeHtml(
-          cell.hazardRange || "Sin rango"
-        )})</span>
-        <span><strong>Clase climatica:</strong> ${escapeHtml(cell.climateDescription || "Sin dato")}</span>
-        <span><strong>Contexto de montana:</strong> ${escapeHtml(mountainText)}</span>
-        <span><strong>Estacion mas cercana:</strong> ${escapeHtml(cell.nearestStation || "--")} (${stationDistanceText})</span>
-        <span><strong>Humedad y viento:</strong> ${humidityText}% · ${windText} m/s</span>
-        <span><strong>Metrica NDBI:</strong> media ${formatNumber(ndbiMean, 2)}, cobertura construida ${formatNumber(
-          builtUpRatio,
-          2
-        )}</span>
-      </div>
-    </div>
-  `;
-
-  return `
-    <div class="popup-card">
-      <h3 class="popup-title">${escapeHtml(cell.name)}</h3>
-      ${buildSatellitePreviewHtml(cell.name, cell.satellitePreview)}
+      <img class="popup-thumb" src="${cell.satellitePreview}" alt="Muestra satelital de ${escapeHtml(cell.name)}">
       <div class="popup-grid">
         <span><strong>Frecuencia SENAMHI:</strong> ${Number(cell.frequency || 0).toFixed(2)} · ${escapeHtml(
-          cell.heatLabel || "Sin dato"
+          cell.heatLabel
         )}</span>
         <span><strong>Sensacion hibrida:</strong> ${getHybridTempC(cell).toFixed(1)}°C · ${Number(
           cell.hybridHeatIndex || 0
         ).toFixed(2)}</span>
         <span><strong>Temperatura superficial:</strong> ${getSurfaceTempC(cell).toFixed(1)}°C</span>
         <span><strong>Indice constructivo:</strong> ${cell.constructionIndex.toFixed(2)} (${escapeHtml(
-          cell.constructionLabel || "Sin dato"
+          cell.constructionLabel
         )})</span>
         <span><strong>Vulnerabilidad:</strong> ${escapeHtml(cell.hazardLevel)} (${escapeHtml(
           cell.hazardRange
         )})</span>
-        <span><strong>Clase climatica:</strong> ${escapeHtml(cell.climateDescription || "Sin dato")}</span>
+        <span><strong>Clase climatica:</strong> ${escapeHtml(cell.climateDescription)}</span>
         <span><strong>Contexto de montana:</strong> ${escapeHtml(mountainText)}</span>
-        <span><strong>Estacion mas cercana:</strong> ${escapeHtml(cell.nearestStation || "--")} (${formatDistanceKm(
-          cell.nearestStationDistanceKm
-        )})</span>
+        <span><strong>Estacion mas cercana:</strong> ${escapeHtml(cell.nearestStation)} (${cell.nearestStationDistanceKm.toFixed(
+          1
+        )} km)</span>
         <span><strong>Humedad y viento:</strong> ${getThermalMetric(cell, "relativeHumidity").toFixed(
           0
         )}% · ${getThermalMetric(cell, "windSpeedMs").toFixed(1)} m/s</span>
-        <span><strong>Metrica NDBI:</strong> media ${formatNumber(ndbiMean, 2)}, cobertura construida ${formatNumber(
-          builtUpRatio,
+        <span><strong>Metrica NDBI:</strong> media ${cell.satelliteMetrics.ndbiMean.toFixed(
           2
-        )}</span>
+        )}, cobertura construida ${cell.satelliteMetrics.builtUpRatio.toFixed(2)}</span>
       </div>
     </div>
   `;
@@ -1318,76 +946,36 @@ function buildStationPopupHtml(station) {
     station.mountainZone || (station.mountainContext && station.mountainContext.length)
       ? "Si, ligada a montana o loma"
       : "No dominante";
-  const builtUpRatio = station?.satelliteMetrics?.builtUpRatio;
-  const ndbiMean = station?.satelliteMetrics?.ndbiMean;
-  const frequencyText = formatNumber(station.frequency, 2);
-  const hybridTempText = formatNumber(getHybridTempC(station), 1);
-  const hybridIndexText = formatNumber(station.hybridHeatIndex, 2);
-  const surfaceTempText = formatNumber(getSurfaceTempC(station), 1);
-  const constructionText = formatNumber(station.constructionIndex, 2);
-  const humidityText = formatNumber(getThermalMetric(station, "relativeHumidity"), 0);
-  const windText = formatNumber(getThermalMetric(station, "windSpeedMs"), 1);
-  const eventCountText = formatInteger(station.eventCount);
-  const summerDaysText = formatInteger(station.summerDays);
 
   return `
     <div class="popup-card">
       <h3 class="popup-title">${escapeHtml(station.name)}</h3>
-      ${buildSatellitePreviewHtml(station.name, station.satellitePreview)}
-      <div class="popup-grid">
-        <span><strong>Frecuencia observada:</strong> ${frequencyText} · ${escapeHtml(
-          station.heatLabel || "Sin dato"
-        )}</span>
-        <span><strong>Sensacion hibrida:</strong> ${hybridTempText}°C · ${hybridIndexText}</span>
-        <span><strong>Temperatura superficial:</strong> ${surfaceTempText}°C</span>
-        <span><strong>Indice constructivo:</strong> ${constructionText} (${escapeHtml(
-          station.constructionLabel || "Sin dato"
-        )})</span>
-        <span><strong>Vulnerabilidad:</strong> ${escapeHtml(station.hazardLevel || "Sin dato")} (${escapeHtml(
-          station.hazardRange || "Sin rango"
-        )})</span>
-        <span><strong>Clase climatica:</strong> ${escapeHtml(station.climateDescription || "Sin dato")}</span>
-        <span><strong>Contexto de montana:</strong> ${escapeHtml(mountainText)}</span>
-        <span><strong>Eventos de calor:</strong> ${eventCountText} en ${summerDaysText} dias observados</span>
-        <span><strong>Humedad y viento:</strong> ${humidityText}% · ${windText} m/s</span>
-        <span><strong>Metrica NDBI:</strong> media ${formatNumber(ndbiMean, 2)}, cobertura construida ${formatNumber(
-          builtUpRatio,
-          2
-        )}</span>
-      </div>
-    </div>
-  `;
-
-  return `
-    <div class="popup-card">
-      <h3 class="popup-title">${escapeHtml(station.name)}</h3>
-      ${buildSatellitePreviewHtml(station.name, station.satellitePreview)}
+      <img class="popup-thumb" src="${station.satellitePreview}" alt="Muestra satelital de ${escapeHtml(
+        station.name
+      )}">
       <div class="popup-grid">
         <span><strong>Frecuencia observada:</strong> ${Number(station.frequency || 0).toFixed(2)} · ${escapeHtml(
-          station.heatLabel || "Sin dato"
+          station.heatLabel
         )}</span>
         <span><strong>Sensacion hibrida:</strong> ${getHybridTempC(station).toFixed(1)}°C · ${Number(
           station.hybridHeatIndex || 0
         ).toFixed(2)}</span>
         <span><strong>Temperatura superficial:</strong> ${getSurfaceTempC(station).toFixed(1)}°C</span>
         <span><strong>Indice constructivo:</strong> ${station.constructionIndex.toFixed(2)} (${escapeHtml(
-          station.constructionLabel || "Sin dato"
+          station.constructionLabel
         )})</span>
         <span><strong>Vulnerabilidad:</strong> ${escapeHtml(station.hazardLevel)} (${escapeHtml(
           station.hazardRange
         )})</span>
-        <span><strong>Clase climatica:</strong> ${escapeHtml(station.climateDescription || "Sin dato")}</span>
+        <span><strong>Clase climatica:</strong> ${escapeHtml(station.climateDescription)}</span>
         <span><strong>Contexto de montana:</strong> ${escapeHtml(mountainText)}</span>
-        <span><strong>Eventos de calor:</strong> ${formatInteger(station.eventCount)} en ${formatInteger(
-          station.summerDays
-        )} dias observados</span>
+        <span><strong>Eventos de calor:</strong> ${station.eventCount} en ${station.summerDays} dias observados</span>
         <span><strong>Humedad y viento:</strong> ${getThermalMetric(station, "relativeHumidity").toFixed(
           0
         )}% · ${getThermalMetric(station, "windSpeedMs").toFixed(1)} m/s</span>
-        <span><strong>Metrica NDBI:</strong> media ${formatNumber(ndbiMean, 2)}, cobertura construida ${formatNumber(
-          builtUpRatio,
+        <span><strong>Metrica NDBI:</strong> media ${station.satelliteMetrics.ndbiMean.toFixed(
           2
-        )}</span>
+        )}, cobertura construida ${station.satelliteMetrics.builtUpRatio.toFixed(2)}</span>
       </div>
     </div>
   `;
